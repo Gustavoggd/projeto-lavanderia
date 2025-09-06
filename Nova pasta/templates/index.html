@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sistema de Lavanderia Flat Horizonte Hotel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <div class="imagem-centralizada">
+            <a href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='logo hotel.jpg') }}" alt="Logo do Hotel" width="200" />
+            </a>
+        </div>
+    </header>
+
+    <nav id="menu">
+        <button class="botao" onclick="mostrar('consultar')">Cadastrar/Consultar clientes</button>
+        <button class="botao" onclick="mostrar('desmarcar')">Desmarcar clientes</button>
+    </nav>
+
+    <main>
+        <div id="secoes-funcionais">
+            <section id="consultar" style="display:block;">
+
+                <div id="modal">
+                    <div id="modal-content">
+                        <button id="modal-close" onclick="fecharModal()">&times;</button>
+                        <button id="modal-prev" onclick="imagemAnterior()" style="display:none;">&#8592;</button>
+                        <img id="modal-img" src="" alt="Imagem ampliada" style="display:none;" />
+                        <button id="modal-next" onclick="proximaImagem()" style="display:none;">&#8594;</button>
+                        <div id="modal-message" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="agendamento-form">
+                    <h3>Agendar Lavanderia</h3>
+                    <label for="nome-agendamento">Nome:</label>
+                    <input type="text" id="nome-agendamento" placeholder="Digite o nome" required>
+                    <label for="apto-agendamento">Apartamento:</label>
+                    <input type="text" id="apto-agendamento" placeholder="Ex: 203" required>
+
+                    <div class="horarios-container">
+                        <h4>Horários disponíveis</h4>
+                        <div id="horarios-disponiveis" class="horarios-grid"></div>
+                    </div>
+
+                    <button id="confirmar-agendamento" class="botao" onclick="confirmarAgendamento()">Confirmar Agendamento</button>
+                </div>
+                
+                <div class="secao-busca">
+                    <input type="text" id="buscaCliente" placeholder="Digite o nome do cliente" class="input-busca">
+                    <button class="botao" onclick="buscarClientes()">Buscar clientes</button>
+
+                    <div class="tabela-container">
+                        <table id="resultadoConsulta">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Apto</th>
+                                    <th>Data</th>
+                                    <th>Horário</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="calendario-container">
+                    <div class="calendario-header">
+                        <button onclick="mesAnterior()">&#8592;</button>
+                        <div id="mes-ano" style="font-weight:bold;"></div>
+                        <button onclick="proximoMes()">&#8594;</button>
+                    </div>
+                    <div id="calendario" class="calendario-grid"></div>
+                </div>
+            </section>
+
+            <section id="desmarcar" style="display:none;">
+                <h2>Desmarcar Cliente</h2>
+                <form action="/desmarcar" method="post">
+                    <p>
+                        <label for="nome-desmarcar">Nome do Cliente</label>
+                        <input type="text" id="nome-desmarcar" name="nome" required />
+                    </p>
+                    <p>
+                        <label for="apto-desmarcar">Apartamento</label>
+                        <input type="number" id="apto-desmarcar" name="apto" required />
+                    </p>
+                    <button class="botao" type="submit">Desmarcar</button>
+                </form>
+            </section>
+        </div>
+
+        <div class="hotel-container">
+            <div class="hotel-info">
+                <h1>Nossa Lavanderia</h1>
+                <p>Conheça nossa estrutura moderna e equipamentos de alta qualidade para melhor atender nossos hóspedes.</p>
+            </div>
+            <div class="imagens">
+                <div><img src="{{ url_for('static', filename='lavanderia2.jpg') }}" alt="Lavanderia 2" onclick="mostrarImagem(this.src)" /></div>
+                <div><img src="{{ url_for('static', filename='lavanderia3.jpg') }}" alt="Lavanderia 3" onclick="mostrarImagem(this.src)" /></div>
+                <div><img src="{{ url_for('static', filename='laavnderia4.jpg') }}" alt="Lavanderia 4" onclick="mostrarImagem(this.src)" /></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Troca de seções
+        function mostrar(secao) {
+            document.querySelectorAll("#secoes-funcionais section").forEach(s => s.style.display = "none");
+            const ativa = document.getElementById(secao);
+            if (ativa) {
+                ativa.style.display = "block";
+                if (secao === "consultar") {
+                    atualizarCalendario();
+                    buscarClientes();
+                }
+            }
+        }
+
+        // Chame a função 'mostrar' com 'consultar' ao carregar a página
+        document.addEventListener("DOMContentLoaded", () => {
+            mostrar('consultar');
+        });
+
+        // Consulta de clientes
+        async function buscarClientes() {
+            const nomeBusca = document.getElementById('buscaCliente').value;
+            const res = await fetch(`/consultar?nome=${encodeURIComponent(nomeBusca)}`);
+            const clientes = await res.json();
+            const tbody = document.querySelector('#resultadoConsulta tbody');
+            tbody.innerHTML = '';
+            clientes.forEach(c => {
+                const tr = document.createElement('tr');
+                // Adicionando o atributo data-label para responsividade
+                tr.innerHTML = `<td data-label="Nome">${c.nome}</td><td data-label="Apto">${c.apto}</td><td data-label="Data">${c.data}</td><td data-label="Horário">${c.horario}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Calendário e agendamento (mantidos)
+        let dataAtual = new Date(),
+            diaSelecionado = null;
+
+        function atualizarCalendario() {
+            const mesAno = document.getElementById("mes-ano"),
+                calendario = document.getElementById("calendario"),
+                mes = dataAtual.getMonth(),
+                ano = dataAtual.getFullYear();
+            if (!mesAno || !calendario) return;
+            mesAno.textContent = `${["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes]} ${ano}`;
+            calendario.innerHTML = "";
+            const primeiroDia = new Date(ano, mes, 1);
+            const ultimoDia = new Date(ano, mes + 1, 0);
+            for (let i = 0; i < primeiroDia.getDay(); i++) {
+                const vazio = document.createElement("div");
+                vazio.className = "dia vazio";
+                calendario.appendChild(vazio);
+            }
+            for (let i = 1; i <= ultimoDia.getDate(); i++) {
+                const dia = document.createElement("div");
+                dia.className = "dia";
+                dia.textContent = i;
+                const hoje = new Date();
+                if (i === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear()) dia.classList.add("hoje");
+                dia.onclick = () => selecionarDia(i, mes, ano);
+                calendario.appendChild(dia);
+            }
+        }
+
+        function mesAnterior() {
+            dataAtual.setMonth(dataAtual.getMonth() - 1);
+            atualizarCalendario();
+        }
+
+        function proximoMes() {
+            dataAtual.setMonth(dataAtual.getMonth() + 1);
+            atualizarCalendario();
+        }
+
+        function selecionarDia(dia, mes, ano) {
+            document.querySelectorAll(".dia.selecionado").forEach(el => el.classList.remove("selecionado"));
+            document.querySelectorAll(".dia").forEach(el => {
+                if (parseInt(el.textContent) === dia) el.classList.add("selecionado");
+            });
+            diaSelecionado = new Date(ano, mes, dia);
+            atualizarHorarios();
+        }
+
+        function atualizarHorarios() {
+            const container = document.getElementById("horarios-disponiveis");
+            if (!container || !diaSelecionado) return;
+            container.innerHTML = "";
+            const dataStr = diaSelecionado.toISOString().split("T")[0];
+            fetch(`/horarios?data=${dataStr}`).then(res => res.json()).then(dados => {
+                ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"].forEach(h => {
+                    const div = document.createElement("div");
+                    div.className = "horario-item";
+                    div.textContent = h;
+                    if (dados.ocupados.includes(h)) div.classList.add("ocupado");
+                    else div.onclick = (e) => selecionarHorario(e);
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function selecionarHorario(e) {
+            document.querySelectorAll(".horario-item").forEach(el => el.classList.remove("selecionado"));
+            e.target.classList.add("selecionado");
+        }
+
+        function confirmarAgendamento() {
+            if (!diaSelecionado) return alert("Selecione um dia!");
+            const horarioSel = document.querySelector(".horario-item.selecionado");
+            if (!horarioSel) return alert("Selecione um horário!");
+            const nome = document.getElementById("nome-agendamento").value.trim();
+            const apto = document.getElementById("apto-agendamento").value.trim();
+            if (!nome || !apto) return alert("Preencha nome e apartamento!");
+            const dataStr = diaSelecionado.toISOString().split("T")[0];
+            fetch("/agendar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({
+                    nome: nome,
+                    apto: apto,
+                    data: dataStr,
+                    horario: horarioSel.textContent
+                })
+            })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.erro) {
+                    alert(resp.erro);
+                } else {
+                    alert("Agendamento confirmado!");
+                    atualizarHorarios();
+                }
+            });
+        }
+
+        // Modal de imagens
+        const imagensModal = [
+            "{{ url_for('static', filename='lavanderia1.jpg') }}",
+            "{{ url_for('static', filename='lavanderia2.jpg') }}",
+            "{{ url_for('static', filename='lavanderia3.jpg') }}",
+            "{{ url_for('static', filename='laavnderia4.jpg') }}"
+        ];
+        let imagemAtual = 0;
+
+        function mostrarImagem(src) {
+            const modal = document.getElementById("modal");
+            const img = document.getElementById("modal-img");
+            const msg = document.getElementById("modal-message");
+            const prev = document.getElementById("modal-prev");
+            const next = document.getElementById("modal-next");
+            imagemAtual = imagensModal.indexOf(src);
+            img.src = src;
+            img.style.display = "block";
+            msg.style.display = "none";
+            prev.style.display = "block";
+            next.style.display = "block";
+            modal.classList.add("ativo");
+        }
+
+        function proximaImagem() {
+            imagemAtual = (imagemAtual + 1) % imagensModal.length;
+            document.getElementById("modal-img").src = imagensModal[imagemAtual];
+        }
+
+        function imagemAnterior() {
+            imagemAtual = (imagemAtual - 1 + imagensModal.length) % imagensModal.length;
+            document.getElementById("modal-img").src = imagensModal[imagemAtual];
+        }
+
+        function fecharModal() {
+            document.getElementById("modal").classList.remove("ativo");
+        }
+    </script>
+</body>
+</html>
