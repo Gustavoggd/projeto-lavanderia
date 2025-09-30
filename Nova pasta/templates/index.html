@@ -8,9 +8,32 @@
 </head>
 <body>
     <header>
-        <div class="auth-buttons">
-            <button class="btn-auth btn-criar" onclick="window.location.href='#'">Criar Conta</button>
-            <button class="btn-auth btn-acessar" onclick="window.location.href='#'">Acessar Conta</button>
+        <div class="auth-section">
+            {% if user %}
+                <!-- Usuário logado -->
+                <div class="user-info">
+                    <div class="user-avatar">
+                        {{ user.nome[0].upper() }}
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name">{{ user.nome }}</span>
+                        <span class="user-email">{{ user.email }}</span>
+                    </div>
+                    <div class="user-menu">
+                        <button class="btn-menu" onclick="toggleUserMenu()">⚙️</button>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <a href="#" onclick="mostrar('perfil')">Meu Perfil</a>
+                            <a href="/logout">Sair</a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Usuário não logado -->
+                <div class="auth-buttons">
+                    <button class="btn-auth btn-criar" onclick="window.location.href='/registro'">Criar Conta</button>
+                    <button class="btn-auth btn-acessar" onclick="window.location.href='/login'">Acessar Conta</button>
+                </div>
+            {% endif %}
         </div>
         <div class="imagem-centralizada">
             <a href="{{ url_for('index') }}">
@@ -233,7 +256,7 @@
                 }
             } catch (error) {
                 console.error('Erro ao desmarcar:', error);
-                alert('❌ Erro ao desmarcar agendamento');
+                alert('❌ Erro ao desmarcar agendamento, é necessário estar logado.');
             }
         }
 
@@ -309,65 +332,126 @@
         function atualizarHorarios() {
             const container = document.getElementById("horarios-disponiveis");
             if (!container || !diaSelecionado) return;
+            
+            console.log('Atualizando horários para:', diaSelecionado);
             container.innerHTML = "";
+            
             const dataStr = diaSelecionado.toISOString().split("T")[0];
-            fetch(`/horarios?data=${dataStr}`).then(res => res.json()).then(dados => {
-                ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"].forEach(h => {
-                    const div = document.createElement("div");
-                    div.className = "horario-item";
-                    div.textContent = h;
-                    if (dados.ocupados.includes(h)) div.classList.add("ocupado");
-                    else div.onclick = (e) => selecionarHorario(e);
-                    container.appendChild(div);
+            
+            fetch(`/horarios?data=${dataStr}`)
+                .then(res => res.json())
+                .then(dados => {
+                    console.log('Dados dos horários recebidos:', dados);
+                    
+                    ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"].forEach(h => {
+                        const div = document.createElement("div");
+                        div.className = "horario-item";
+                        div.textContent = h;
+                        
+                        if (dados.ocupados && dados.ocupados.includes(h)) {
+                            div.classList.add("ocupado");
+                            console.log(`Horário ${h} está ocupado`);
+                        } else {
+                            div.addEventListener('click', function(e) {
+                                console.log('Clicou no horário:', h);
+                                selecionarHorario(e);
+                            });
+                            console.log(`Horário ${h} está disponível`);
+                        }
+                        
+                        container.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar horários:', error);
                 });
-            });
         }
 
         function selecionarHorario(e) {
-            document.querySelectorAll(".horario-item").forEach(el => el.classList.remove("selecionado"));
-            e.target.classList.add("selecionado");
+            console.log('Função selecionarHorario chamada');
+            console.log('Elemento clicado:', e.target);
+            
+            // Remove seleção de todos os horários
+            document.querySelectorAll(".horario-item").forEach(el => {
+                el.classList.remove("selecionada");
+                console.log('Removendo seleção de:', el.textContent);
+            });
+            
+            // Adiciona seleção ao horário clicado
+            e.target.classList.add("selecionada");
+            console.log('Horário selecionado:', e.target.textContent);
+            
+            // Verifica se a classe foi aplicada
+            console.log('Classes do elemento:', e.target.classList.toString());
         }
 
         async function confirmarAgendamento() {
-            if (!diaSelecionado) return alert("Selecione um dia!");
+            console.log('=== INICIANDO AGENDAMENTO ===');
             
-            const horarioSel = document.querySelector(".horario-item.selecionado");
-            if (!horarioSel) return alert("Selecione um horário!");
+            if (!diaSelecionado) {
+                alert("Selecione um dia!");
+                return;
+            }
+            console.log('✅ Dia selecionado:', diaSelecionado);
+            
+            const horarioSel = document.querySelector(".horario-item.selecionada");
+            console.log('Horários com classe selecionada:', document.querySelectorAll(".horario-item.selecionada"));
+            console.log('Horário encontrado:', horarioSel);
+            
+            if (!horarioSel) {
+                alert("Selecione um horário!");
+                console.log('❌ Nenhum horário selecionado');
+                return;
+            }
+            console.log('✅ Horário selecionado:', horarioSel.textContent);
             
             const nome = document.getElementById("nome-agendamento").value.trim();
             const apto = document.getElementById("apto-agendamento").value.trim();
             
-            if (!nome || !apto) return alert("Preencha nome e apartamento!");
+            if (!nome || !apto) {
+                alert("Preencha nome e apartamento!");
+                return;
+            }
+            console.log('✅ Dados preenchidos:', { nome, apto });
             
             const dataStr = diaSelecionado.toISOString().split("T")[0];
+            const dadosEnvio = { nome, apto, data: dataStr, horario: horarioSel.textContent };
+            console.log('📤 Enviando dados:', dadosEnvio);
             
             try {
                 const res = await fetch("/agendar", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ nome, apto, data: dataStr, horario: horarioSel.textContent })
+                    body: new URLSearchParams(dadosEnvio)
                 });
                 
-                const resp = await res.json();
+                console.log('📥 Resposta recebida - Status:', res.status);
                 
-                if (resp.erro) {
-                    alert(resp.erro);
+                const resp = await res.json();
+                console.log('📥 Dados da resposta:', resp);
+                
+                if (res.ok) {
+                    if (resp.erro) {
+                        alert(`❌ ${resp.erro}`);
+                    } else {
+                        alert("✅ Agendamento confirmado!");
+                        
+                        // Limpa os campos do formulário
+                        document.getElementById("nome-agendamento").value = '';
+                        document.getElementById("apto-agendamento").value = '';
+                        
+                        // Remove seleção do horário
+                        document.querySelectorAll(".horario-item").forEach(el => el.classList.remove("selecionada"));
+                        
+                        // Atualiza automaticamente as visualizações
+                        await atualizarVisualizacoes();
+                    }
                 } else {
-                    alert("Agendamento confirmado!");
-                    
-                    // Limpa os campos do formulário
-                    document.getElementById("nome-agendamento").value = '';
-                    document.getElementById("apto-agendamento").value = '';
-                    
-                    // Remove seleção do horário
-                    document.querySelectorAll(".horario-item").forEach(el => el.classList.remove("selecionado"));
-                    
-                    // Atualiza automaticamente as visualizações
-                    await atualizarVisualizacoes();
+                    alert(`❌ Erro HTTP ${res.status}: ${resp.erro || 'Erro desconhecido'}`);
                 }
             } catch (error) {
-                console.error('Erro ao agendar:', error);
-                alert('Erro ao confirmar agendamento');
+                console.error('💥 Erro completo:', error);
+                alert(`❌ Erro de conexão: ${error.message}`);
             }
         }
 
@@ -552,6 +636,27 @@
                 // Se nada está visível, carrega a visualização padrão (hoje)
                 await inicializarDataHoje();
             }
+        }
+
+        // Função para alternar o menu do usuário
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function(event) {
+            const userMenu = document.querySelector('.user-menu');
+            const dropdown = document.getElementById('userDropdown');
+            
+            if (dropdown && !userMenu.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Função para mostrar perfil (opcional - você pode implementar depois)
+        function mostrarPerfil() {
+            alert('Funcionalidade do perfil em desenvolvimento!');
         }
     </script>
 </body>

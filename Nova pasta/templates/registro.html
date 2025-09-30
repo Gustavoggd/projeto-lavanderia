@@ -1,35 +1,109 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Criar Conta</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Criar Conta - Sistema de Lavanderia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
 <body>
-    <h1>Criar Conta</h1>
-    <form id="registroForm">
-        <label for="nome">Nome:</label>
-        <input type="text" id="nome" name="nome" required><br>
-        <label for="email">E-mail:</label>
-        <input type="email" id="email" name="email" required><br>
-        <label for="senha">Senha:</label>
-        <input type="password" id="senha" name="senha" required><br>
-        <button type="submit">Criar Conta</button>
-    </form>
-    <p>Já tem conta? <a href="{{ url_for('login') }}">Acessar conta</a></p>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="logo">🏨</div>
+                <h1>Criar Conta</h1>
+                <p>Registre-se para acessar o sistema</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+            <div id="success-message" class="success-message"></div>
+
+            <form id="registroForm">
+                <div class="form-group">
+                    <label for="nome">Nome Completo</label>
+                    <input type="text" id="nome" name="nome" required 
+                           placeholder="Digite seu nome completo">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="Digite seu e-mail">
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" required 
+                           placeholder="Crie uma senha segura" minlength="6">
+                </div>
+
+                <button type="submit" class="btn-auth-submit" id="btnRegistro">
+                    Criar Conta
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                Criando conta...
+            </div>
+
+            <div class="auth-footer">
+                <p>Já tem uma conta?</p>
+                <a href="{{ url_for('login') }}" class="btn-secondary">Fazer Login</a>
+            </div>
+
+            <div class="back-home">
+                <a href="{{ url_for('index') }}">
+                    ← Voltar ao início
+                </a>
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.getElementById('registroForm').onsubmit = function(e) {
+        document.getElementById('registroForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            fetch('/registro', {method: 'POST', body: formData})
-            .then(r => r.json()).then(d => {
-                if (d.mensagem) {
-                    alert(d.mensagem);
-                    window.location.href = '/login';
+            
+            const btnRegistro = document.getElementById('btnRegistro');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            // Reset messages
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+            
+            // Show loading
+            btnRegistro.disabled = true;
+            btnRegistro.textContent = 'Criando...';
+            loading.classList.add('show');
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/registro', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.mensagem) {
+                    successMessage.textContent = data.mensagem + ' Redirecionando...';
+                    successMessage.classList.add('show');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
                 } else {
-                    alert(d.erro);
+                    throw new Error(data.erro || 'Erro no cadastro');
                 }
-            });
-        }
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.classList.add('show');
+            } finally {
+                btnRegistro.disabled = false;
+                btnRegistro.textContent = 'Criar Conta';
+                loading.classList.remove('show');
+            }
+        });
     </script>
 </body>
 </html>

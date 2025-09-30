@@ -1,33 +1,103 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Acessar Conta</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acessar Conta - Sistema de Lavanderia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
 <body>
-    <h1>Acessar Conta</h1>
-    <form id="loginForm">
-        <label for="email">E-mail:</label>
-        <input type="email" id="email" name="email" required><br>
-        <label for="senha">Senha:</label>
-        <input type="password" id="senha" name="senha" required><br>
-        <button type="submit">Entrar</button>
-    </form>
-    <p>Não tem conta? <a href="{{ url_for('registro') }}">Criar conta</a></p>
+    <div class="auth-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="logo">🏨</div>
+                <h1>Bem-vindo</h1>
+                <p>Acesse sua conta para continuar</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+            <div id="success-message" class="success-message"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="Digite seu e-mail">
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" required 
+                           placeholder="Digite sua senha">
+                </div>
+
+                <button type="submit" class="btn-auth-submit" id="btnLogin">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                Entrando...
+            </div>
+
+            <div class="auth-footer">
+                <p>Não tem uma conta?</p>
+                <a href="{{ url_for('registro') }}" class="btn-secondary">Criar Conta</a>
+            </div>
+
+            <div class="back-home">
+                <a href="{{ url_for('index') }}">
+                    ← Voltar ao início
+                </a>
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.getElementById('loginForm').onsubmit = function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            fetch('/login', {method: 'POST', body: formData})
-            .then(r => r.json()).then(d => {
-                if (d.mensagem) {
-                    alert(d.mensagem);
-                    window.location.href = '/';
+            
+            const btnLogin = document.getElementById('btnLogin');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            // Reset messages
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+            
+            // Show loading
+            btnLogin.disabled = true;
+            btnLogin.textContent = 'Entrando...';
+            loading.classList.add('show');
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.mensagem) {
+                    successMessage.textContent = data.mensagem;
+                    successMessage.classList.add('show');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
                 } else {
-                    alert(d.erro);
+                    throw new Error(data.erro || 'Erro no login');
                 }
-            });
-        }
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.classList.add('show');
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.textContent = 'Entrar';
+                loading.classList.remove('show');
+            }
+        });
     </script>
 </body>
 </html>

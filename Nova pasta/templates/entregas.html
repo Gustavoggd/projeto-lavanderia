@@ -8,15 +8,40 @@
 </head>
 <body>
     <header>
-          <div class="auth-buttons">
-                <button class="btn-auth btn-criar" onclick="window.location.href='/login'">Criar Conta</button>
-                <button class="btn-auth btn-acessar" onclick="window.location.href='/registro'">Acessar Conta</button>
-            </div>
+        <div class="auth-section">
+            {% if user %}
+                <!-- Usuário logado -->
+                <div class="user-info">
+                    <div class="user-avatar">
+                        {{ user.nome[0].upper() }}
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name">{{ user.nome }}</span>
+                        <span class="user-email">{{ user.email }}</span>
+                    </div>
+                    <div class="user-menu">
+                        <button class="btn-menu" onclick="toggleUserMenu()">⚙️</button>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <a href="#" onclick="mostrarPerfil()">Meu Perfil</a>
+                            <a href="/logout">Sair</a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Usuário não logado -->
+                <div class="auth-buttons">
+                    <button class="btn-auth btn-criar" onclick="window.location.href='/registro'">Criar Conta</button>
+                    <button class="btn-auth btn-acessar" onclick="window.location.href='/login'">Acessar Conta</button>
+                </div>
+            {% endif %}
+        </div>
+
         <div class="imagem-centralizada">
             <a href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo hotel.jpg') }}" alt="Logo do Hotel" width="200" />
             </a>
         </div>
+        
         <nav class="navbar-principal">
            <ul>
               <li><a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Lavanderia</a></li>
@@ -55,24 +80,58 @@
     </main>
 
     <script>
+        // Função para alternar o menu do usuário
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function(event) {
+            const userMenu = document.querySelector('.user-menu');
+            const dropdown = document.getElementById('userDropdown');
+            
+            if (dropdown && userMenu && !userMenu.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Função para mostrar perfil
+        function mostrarPerfil() {
+            alert('Funcionalidade do perfil em desenvolvimento!');
+        }
+
         // Exemplo de busca de entregas (AJAX)
         async function buscarEntregas() {
             const cliente = document.getElementById('cliente').value;
             const apartamento = document.getElementById('apartamento').value;
-            const resp = await fetch(`/consultar_entregas?cliente=${encodeURIComponent(cliente)}&apartamento=${encodeURIComponent(apartamento)}`);
-            const entregas = await resp.json();
-            const tbody = document.querySelector('#tabela-entregas tbody');
-            tbody.innerHTML = '';
-            entregas.forEach(e => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td data-label="Cliente">${e.cliente}</td>
-                    <td data-label="Apartamento">${e.apartamento}</td>
-                    <td data-label="Descrição">${e.descricao}</td>
-                    <td data-label="Data/Hora">${e.data_hora}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            
+            try {
+                const resp = await fetch(`/consultar_entregas?cliente=${encodeURIComponent(cliente)}&apartamento=${encodeURIComponent(apartamento)}`);
+                const entregas = await resp.json();
+                const tbody = document.querySelector('#tabela-entregas tbody');
+                tbody.innerHTML = '';
+                
+                if (entregas.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">Nenhuma entrega encontrada</td></tr>';
+                    return;
+                }
+
+                entregas.forEach(e => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td data-label="Cliente">${e.cliente}</td>
+                        <td data-label="Apartamento">${e.apartamento}</td>
+                        <td data-label="Descrição">${e.descricao}</td>
+                        <td data-label="Data/Hora">${e.data_hora}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao buscar entregas:', error);
+                const tbody = document.querySelector('#tabela-entregas tbody');
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #dc3545;">Erro ao carregar entregas</td></tr>';
+            }
         }
     </script>
 </body>
