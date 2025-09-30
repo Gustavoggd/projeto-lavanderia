@@ -1,29 +1,39 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
-import json
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 import os
 
 app = Flask(__name__)
 CORS(app)
 
-# ==========================
-# CONSTANTES DE ARQUIVOS
-# ==========================
-ARQUIVO_CLIENTES = 'clientes.json'
-ARQUIVO_AGENDAMENTOS = 'agendamentos.json'
+# Configuração do banco de dados PostgreSQL
+app.config['SECRET_KEY'] = 'chave_segura_123'
+# Se estiver usando pg8000 (recomendado para evitar problemas de compilação):
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+pg8000://postgres:2007@localhost:5432/lavanderia_db'
+# Se estiver usando psycopg2-binary:
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:2007@localhost:5432/lavanderia_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 # ==========================
-# FUNÇÕES AUXILIARES
+# MODELOS DO BANCO
 # ==========================
-def carregar_dados(caminho_arquivo):
-    if not os.path.exists(caminho_arquivo):
-        return []
-    with open(caminho_arquivo, 'r', encoding='utf-8') as f:
-        return json.load(f)
+class Cliente(db.Model):
+    __tablename__ = 'clientes'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    apto = db.Column(db.String(20), nullable=False)
 
-def salvar_dados(dados, caminho_arquivo):
-    with open(caminho_arquivo, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, indent=4, ensure_ascii=False)
+class Agendamento(db.Model):
+    __tablename__ = 'agendamentos'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    apto = db.Column(db.String(20), nullable=False)
+    data = db.Column(db.String(20), nullable=False)
+    horario = db.Column(db.String(10), nullable=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 # ==========================
 # ROTAS DO FLASK
@@ -42,28 +52,39 @@ def cadastrar():
         if not nome or not apto:
             return jsonify({"erro": "Nome e apartamento são obrigatórios."}), 400
 
-        clientes = carregar_dados(ARQUIVO_CLIENTES)
-
-        if any(c['nome'].lower() == nome.lower() and c['apto'] == apto for c in clientes):
+        if Cliente.query.filter(db.func.lower(Cliente.nome) == nome.lower(), Cliente.apto == apto).first():
             return jsonify({"erro": "Cliente já cadastrado."}), 409
 
-        clientes.append({'nome': nome, 'apto': apto})
-        salvar_dados(clientes, ARQUIVO_CLIENTES)
+        novo_cliente = Cliente(nome=nome, apto=apto)
+        db.session.add(novo_cliente)
+        db.session.commit()
 
         return jsonify({"mensagem": "Cliente cadastrado com sucesso!"}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({"erro": "Erro ao processar a requisição: " + str(e)}), 500
 
 @app.route('/consultar', methods=['GET'])
 def consultar():
     nome_busca = request.args.get('nome', '').strip().lower()
-    agendamentos = carregar_dados(ARQUIVO_AGENDAMENTOS)
-
-    if not nome_busca:
-        return jsonify(agendamentos)
-
-    clientes_encontrados = [ag for ag in agendamentos if nome_busca in ag['nome'].lower()]
-    return jsonify(clientes_encontrados)
+    data_busca = request.args.get('data', '').strip()
+    
+    if data_busca:
+        # Busca por data específica
+        agendamentos = Agendamento.query.filter_by(data=data_busca).all()
+    elif nome_busca:
+        # Busca por nome
+        agendamentos = Agendamento.query.filter(db.func.lower(Agendamento.nome).like(f"%{nome_busca}%")).all()
+    else:
+        # Retorna todos
+        agendamentos = Agendamento.query.all()
+    
+    return jsonify([{
+        "nome": ag.nome,
+        "apto": ag.apto,
+        "data": ag.data,
+        "horario": ag.horario
+    } for ag in agendamentos])
 
 @app.route('/desmarcar', methods=['POST'])
 def desmarcar():
@@ -74,19 +95,15 @@ def desmarcar():
         if not nome or not apto:
             return "Dados incompletos", 400
 
-        clientes = carregar_dados(ARQUIVO_CLIENTES)
-        novos_clientes = [c for c in clientes if not (c['nome'].lower() == nome.lower() and c['apto'] == apto)]
-        salvar_dados(novos_clientes, ARQUIVO_CLIENTES)
-        
-        agendamentos = carregar_dados(ARQUIVO_AGENDAMENTOS)
-        novos_agendamentos = [ag for ag in agendamentos if not (ag['nome'].lower() == nome.lower() and ag['apto'] == apto)]
-        salvar_dados(novos_agendamentos, ARQUIVO_AGENDAMENTOS)
+        Cliente.query.filter(db.func.lower(Cliente.nome) == nome.lower(), Cliente.apto == apto).delete()
+        Agendamento.query.filter(db.func.lower(Agendamento.nome) == nome.lower(), Agendamento.apto == apto).delete()
+        db.session.commit()
 
         return redirect(url_for('index'))
     except Exception as e:
+        db.session.rollback()
         return f"Erro ao desmarcar cliente: {e}", 500
 
-# --- ALTERADO: Agendar permite até 2 pessoas por horário ---
 @app.route('/agendar', methods=['POST'])
 def agendar():
     try:
@@ -99,33 +116,32 @@ def agendar():
         if not nome or not apto or not data or not horario:
             return jsonify({"erro": "Dados incompletos"}), 400
         
-        clientes_cadastrados = carregar_dados(ARQUIVO_CLIENTES)
-        cliente_existe = any(c['nome'].lower() == nome.lower() and c['apto'] == apto for c in clientes_cadastrados)
-        if not cliente_existe:
-            clientes_cadastrados.append({'nome': nome, 'apto': apto})
-            salvar_dados(clientes_cadastrados, ARQUIVO_CLIENTES)
+        # Garante que o cliente existe
+        cliente = Cliente.query.filter(db.func.lower(Cliente.nome) == nome.lower(), Cliente.apto == apto).first()
+        if not cliente:
+            cliente = Cliente(nome=nome, apto=apto)
+            db.session.add(cliente)
+            db.session.commit()
 
-        agendamentos = carregar_dados(ARQUIVO_AGENDAMENTOS)
-
-        # --- ALTERAÇÃO: permitir até 2 pessoas por horário ---
-        ocupados_mesmo_horario = [ag for ag in agendamentos if ag['data'] == data and ag['horario'] == horario]
-        if len(ocupados_mesmo_horario) >= 2:
+        # Permitir até 2 pessoas por horário/data
+        ocupados_mesmo_horario = Agendamento.query.filter_by(data=data, horario=horario).count()
+        if ocupados_mesmo_horario >= 2:
             return jsonify({"erro": "Horário já ocupado por 2 pessoas"}), 409
 
-        novo_agendamento = {
-            'nome': nome,
-            'apto': apto,
-            'data': data,
-            'horario': horario
-        }
-        agendamentos.append(novo_agendamento)
-        salvar_dados(agendamentos, ARQUIVO_AGENDAMENTOS)
+        novo_agendamento = Agendamento(
+            nome=nome,
+            apto=apto,
+            data=data,
+            horario=horario
+        )
+        db.session.add(novo_agendamento)
+        db.session.commit()
 
         return jsonify({"mensagem": "Agendamento realizado"}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({"erro": "Erro ao agendar: " + str(e)}), 500
 
-# --- ALTERADO: Horários considera ocupados apenas se tiver 2 pessoas ---
 @app.route('/horarios', methods=['GET'])
 def horarios():
     data = request.args.get('data')
@@ -133,12 +149,11 @@ def horarios():
         return jsonify({"erro": "Data não especificada."}), 400
 
     horarios_lavanderia = ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"]
-    agendamentos = carregar_dados(ARQUIVO_AGENDAMENTOS)
-
     ocupacao = {h: 0 for h in horarios_lavanderia}
+    agendamentos = Agendamento.query.filter_by(data=data).all()
     for ag in agendamentos:
-        if ag['data'] == data and ag['horario'] in ocupacao:
-            ocupacao[ag['horario']] += 1
+        if ag.horario in ocupacao:
+            ocupacao[ag.horario] += 1
 
     disponiveis = [h for h, qtd in ocupacao.items() if qtd < 2]
     ocupados = [h for h, qtd in ocupacao.items() if qtd >= 2]
@@ -160,16 +175,17 @@ def desmarcar_horario():
         if not all([nome, apto, data, horario]):
             return "Dados incompletos", 400
 
-        agendamentos = carregar_dados(ARQUIVO_AGENDAMENTOS)
-        novos_agendamentos = [
-            ag for ag in agendamentos
-            if not (ag['nome'].lower() == nome.lower() and ag['apto'] == apto and ag['data'] == data and ag['horario'] == horario)
-        ]
-        
-        salvar_dados(novos_agendamentos, ARQUIVO_AGENDAMENTOS)
+        Agendamento.query.filter(
+            db.func.lower(Agendamento.nome) == nome.lower(),
+            Agendamento.apto == apto,
+            Agendamento.data == data,
+            Agendamento.horario == horario
+        ).delete()
+        db.session.commit()
 
         return jsonify({"mensagem": "Agendamento removido"}), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({"erro": f"Erro ao remover agendamento: {e}"}), 500
 
 @app.route('/entregas')
@@ -177,8 +193,6 @@ def entregas():
     return render_template('entregas.html')
 
 if __name__ == '__main__':
-    if not os.path.exists(ARQUIVO_CLIENTES):
-        salvar_dados([], ARQUIVO_CLIENTES)
-    if not os.path.exists(ARQUIVO_AGENDAMENTOS):
-        salvar_dados([], ARQUIVO_AGENDAMENTOS)
+    with app.app_context():
+        db.create_all()
     app.run(host='0.0.0.0', port=5000, debug=True)

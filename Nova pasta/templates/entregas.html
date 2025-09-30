@@ -8,6 +8,10 @@
 </head>
 <body>
     <header>
+          <div class="auth-buttons">
+                <button class="btn-auth btn-criar" onclick="window.location.href='/login'">Criar Conta</button>
+                <button class="btn-auth btn-acessar" onclick="window.location.href='/registro'">Acessar Conta</button>
+            </div>
         <div class="imagem-centralizada">
             <a href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo hotel.jpg') }}" alt="Logo do Hotel" width="200" />

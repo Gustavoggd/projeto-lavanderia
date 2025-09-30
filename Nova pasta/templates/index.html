@@ -8,17 +8,24 @@
 </head>
 <body>
     <header>
+        <div class="auth-buttons">
+            <button class="btn-auth btn-criar" onclick="window.location.href='#'">Criar Conta</button>
+            <button class="btn-auth btn-acessar" onclick="window.location.href='#'">Acessar Conta</button>
+        </div>
         <div class="imagem-centralizada">
             <a href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo hotel.jpg') }}" alt="Logo do Hotel" width="200" />
             </a>
         </div>
-        <nav class="navbar-principal">
-           <ul>
-              <li><a href="{{ url_for('index') }}" class="active">Lavanderia</a></li>
-              <li><a href="{{ url_for('entregas') }}">Entregas</a></li>
-           </ul>
-        </nav>
+        
+        <div class="header-navigation">
+            <nav class="navbar-principal">
+               <ul>
+                  <li><a href="{{ url_for('index') }}" class="active">Lavanderia</a></li>
+                  <li><a href="{{ url_for('entregas') }}">Entregas</a></li>
+               </ul>
+            </nav>
+        </div>
 
 
     </header>
@@ -59,10 +66,29 @@
                 </div>
                 
                 <div class="secao-busca">
-                    <input type="text" id="buscaCliente" placeholder="Digite o nome do cliente" class="input-busca">
-                    <button class="botao" onclick="buscarClientes()">Buscar clientes</button>
+                    <div class="consulta-header">
+                        <h3>Consultar Agendamentos</h3>
+                        <div class="data-selector">
+                            <label for="data-consulta">Selecionar Data:</label>
+                            <input type="date" id="data-consulta" onchange="consultarAgendamentosPorData()">
+                            <button class="botao" onclick="consultarTodosAgendamentos()">Ver Todos</button>
+                        </div>
+                    </div>
 
-                    <div class="tabela-container">
+                    <div class="agendamentos-grid" id="agendamentos-grid">
+                        <div class="grid-header">
+                            <div class="grid-cell header">Horário</div>
+                            <div class="grid-cell header">Pessoa 1</div>
+                            <div class="grid-cell header">Pessoa 2</div>
+                            <div class="grid-cell header">Status</div>
+                        </div>
+                        <div id="grid-content">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Tabela tradicional para "Ver Todos" -->
+                    <div class="tabela-container" id="tabela-tradicional" style="display:none;">
                         <table id="resultadoConsulta">
                             <thead>
                                 <tr>
@@ -119,7 +145,7 @@
         </div>
     </main>
 
-    <script>
+   <script>
         // Troca de seções
         function mostrar(secao) {
             document.querySelectorAll("#secoes-funcionais section").forEach(s => s.style.display = "none");
@@ -135,43 +161,79 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             mostrar('consultar');
+            
+            // Inicializa o calendário
+            const hoje = new Date();
+            diaSelecionado = hoje;
+            atualizarCalendario();
+            selecionarDia(hoje.getDate(), hoje.getMonth(), hoje.getFullYear());
+            
+            // Define a data de hoje no campo de consulta e carrega agendamentos
+            inicializarDataHoje();
         });
+
+        // Função para definir a data de hoje e carregar agendamentos automaticamente
+        function inicializarDataHoje() {
+            const hoje = new Date();
+            const dataFormatada = hoje.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+            
+            const dataInput = document.getElementById('data-consulta');
+            if (dataInput) {
+                dataInput.value = dataFormatada;
+                // Carrega automaticamente os agendamentos de hoje
+                consultarAgendamentosPorData();
+            }
+        }
 
         // Consulta de clientes
         async function buscarClientes() {
-            const nomeBusca = document.getElementById('buscaCliente').value;
+            const nomeBusca = document.getElementById('buscaCliente') ? document.getElementById('buscaCliente').value : '';
             const res = await fetch(`/consultar?nome=${encodeURIComponent(nomeBusca)}`);
             const clientes = await res.json();
             const tbody = document.querySelector('#resultadoConsulta tbody');
-            tbody.innerHTML = '';
-            clientes.forEach(c => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td data-label="Nome">${c.nome}</td>
-                    <td data-label="Apto">${c.apto}</td>
-                    <td data-label="Data">${c.data}</td>
-                    <td data-label="Horário">${c.horario}</td>
-                    <td><button class="botao-excluir" onclick="desmarcarCliente('${c.nome}','${c.apto}','${c.data}','${c.horario}')">❌</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
+            
+            if (tbody) {
+                tbody.innerHTML = '';
+                clientes.forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td data-label="Nome">${c.nome}</td>
+                        <td data-label="Apto">${c.apto}</td>
+                        <td data-label="Data">${c.data}</td>
+                        <td data-label="Horário">${c.horario}</td>
+                        <td><button class="botao-excluir" onclick="desmarcarCliente('${c.nome}','${c.apto}','${c.data}','${c.horario}')">🗑️</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
         }
 
-        // Desmarcar cliente via botão X
+        // Desmarcar cliente via botão individual
         async function desmarcarCliente(nome, apto, data, horario) {
-            if (!confirm(`Deseja realmente desmarcar o agendamento de ${nome} (${apto}) em ${data} às ${horario}?`)) return;
-            const res = await fetch("/desmarcar", {
-                method: "POST",
-                headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                body: new URLSearchParams({ nome, apto, data, horario })
-            });
-            const resp = await res.json();
-            if (resp.erro) {
-                alert(resp.erro);
-            } else {
-                alert("Agendamento desmarcado com sucesso!");
-                buscarClientes();
-                atualizarHorarios();
+            if (!confirm(`🗑️ REMOVER AGENDAMENTO\n\nPessoa: ${nome}\nApartamento: ${apto}\nData: ${data}\nHorário: ${horario}\n\nDeseja confirmar a remoção?`)) {
+                return;
+            }
+            
+            try {
+                const res = await fetch("/desmarcar_horario", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                    body: new URLSearchParams({ nome, apto, data, horario })
+                });
+                
+                const resp = await res.json();
+                
+                if (resp.erro) {
+                    alert(`❌ Erro: ${resp.erro}`);
+                } else {
+                    alert(`✅ Agendamento de ${nome} (${apto}) removido com sucesso!`);
+                    
+                    // Atualiza automaticamente as visualizações
+                    await atualizarVisualizacoes();
+                }
+            } catch (error) {
+                console.error('Erro ao desmarcar:', error);
+                alert('❌ Erro ao desmarcar agendamento');
             }
         }
 
@@ -266,29 +328,47 @@
             e.target.classList.add("selecionado");
         }
 
-        function confirmarAgendamento() {
+        async function confirmarAgendamento() {
             if (!diaSelecionado) return alert("Selecione um dia!");
+            
             const horarioSel = document.querySelector(".horario-item.selecionado");
             if (!horarioSel) return alert("Selecione um horário!");
+            
             const nome = document.getElementById("nome-agendamento").value.trim();
             const apto = document.getElementById("apto-agendamento").value.trim();
+            
             if (!nome || !apto) return alert("Preencha nome e apartamento!");
+            
             const dataStr = diaSelecionado.toISOString().split("T")[0];
-            fetch("/agendar", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ nome, apto, data: dataStr, horario: horarioSel.textContent })
-            })
-            .then(res => res.json())
-            .then(resp => {
+            
+            try {
+                const res = await fetch("/agendar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ nome, apto, data: dataStr, horario: horarioSel.textContent })
+                });
+                
+                const resp = await res.json();
+                
                 if (resp.erro) {
                     alert(resp.erro);
                 } else {
                     alert("Agendamento confirmado!");
-                    atualizarHorarios();
-                    buscarClientes();
+                    
+                    // Limpa os campos do formulário
+                    document.getElementById("nome-agendamento").value = '';
+                    document.getElementById("apto-agendamento").value = '';
+                    
+                    // Remove seleção do horário
+                    document.querySelectorAll(".horario-item").forEach(el => el.classList.remove("selecionado"));
+                    
+                    // Atualiza automaticamente as visualizações
+                    await atualizarVisualizacoes();
                 }
-            });
+            } catch (error) {
+                console.error('Erro ao agendar:', error);
+                alert('Erro ao confirmar agendamento');
+            }
         }
 
         // Modal de imagens
@@ -327,6 +407,151 @@
 
         function fecharModal() {
             document.getElementById("modal").classList.remove("ativo");
+        }
+
+        // Função para consultar agendamentos por data específica
+        async function consultarAgendamentosPorData() {
+            const dataInput = document.getElementById('data-consulta');
+            const dataSelecionada = dataInput.value;
+            
+            if (!dataSelecionada) {
+                alert('Selecione uma data');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/consultar?data=${dataSelecionada}`);
+                const agendamentos = await res.json();
+                
+                mostrarGridAgendamentos(agendamentos, dataSelecionada);
+                document.getElementById('agendamentos-grid').style.display = 'block';
+                document.getElementById('tabela-tradicional').style.display = 'none';
+            } catch (error) {
+                console.error('Erro ao consultar agendamentos:', error);
+            }
+        }
+
+        // Função para mostrar todos os agendamentos na tabela tradicional
+        async function consultarTodosAgendamentos() {
+            document.getElementById('data-consulta').value = '';
+            await buscarClientes();
+            document.getElementById('agendamentos-grid').style.display = 'none';
+            document.getElementById('tabela-tradicional').style.display = 'block';
+        }
+
+        // Função para criar a grade de agendamentos com ações individuais
+        function mostrarGridAgendamentos(agendamentos, data) {
+            const gridContent = document.getElementById('grid-content');
+            const horarios = ["07:00", "10:00", "13:00", "16:00", "19:00", "22:00"];
+            
+            gridContent.innerHTML = '';
+            
+            horarios.forEach(horario => {
+                const agendamentosHorario = agendamentos.filter(ag => ag.horario === horario);
+                const row = document.createElement('div');
+                row.className = 'grid-row';
+                
+                // Célula do horário
+                const cellHorario = document.createElement('div');
+                cellHorario.className = 'grid-cell horario';
+                cellHorario.textContent = horario;
+                row.appendChild(cellHorario);
+                
+                // Pessoa 1
+                const cellPessoa1 = document.createElement('div');
+                cellPessoa1.className = 'grid-cell agendamento';
+                if (agendamentosHorario[0]) {
+                    cellPessoa1.innerHTML = `
+                        <div class="agendamento-slot ocupado">
+                            <div class="agendamento-info">
+                                <div class="agendamento-nome">${agendamentosHorario[0].nome}</div>
+                                <div class="agendamento-apto">Apto ${agendamentosHorario[0].apto}</div>
+                            </div>
+                            <button class="botao-excluir-individual" 
+                                    onclick="desmarcarCliente('${agendamentosHorario[0].nome}','${agendamentosHorario[0].apto}','${agendamentosHorario[0].data}','${agendamentosHorario[0].horario}')"
+                                    title="Remover ${agendamentosHorario[0].nome}">
+                                🗑️
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    cellPessoa1.className += ' vazio';
+                    cellPessoa1.innerHTML = `
+                        <div class="agendamento-slot">
+                            <span style="color: #999; font-style: italic;">Disponível</span>
+                        </div>
+                    `;
+                }
+                row.appendChild(cellPessoa1);
+                
+                // Pessoa 2
+                const cellPessoa2 = document.createElement('div');
+                cellPessoa2.className = 'grid-cell agendamento';
+                if (agendamentosHorario[1]) {
+                    cellPessoa2.innerHTML = `
+                        <div class="agendamento-slot ocupado">
+                            <div class="agendamento-info">
+                                <div class="agendamento-nome">${agendamentosHorario[1].nome}</div>
+                                <div class="agendamento-apto">Apto ${agendamentosHorario[1].apto}</div>
+                            </div>
+                            <button class="botao-excluir-individual" 
+                                    onclick="desmarcarCliente('${agendamentosHorario[1].nome}','${agendamentosHorario[1].apto}','${agendamentosHorario[1].data}','${agendamentosHorario[1].horario}')"
+                                    title="Remover ${agendamentosHorario[1].nome}">
+                                🗑️
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    cellPessoa2.className += ' vazio';
+                    cellPessoa2.innerHTML = `
+                        <div class="agendamento-slot">
+                            <span style="color: #999; font-style: italic;">Disponível</span>
+                        </div>
+                    `;
+                }
+                row.appendChild(cellPessoa2);
+                
+                // Coluna de status (substitui a coluna de ações centralizadas)
+                const cellStatus = document.createElement('div');
+                cellStatus.className = 'grid-cell';
+                const totalAgendamentos = agendamentosHorario.length;
+                if (totalAgendamentos === 0) {
+                    cellStatus.innerHTML = '<span style="color: #28a745; font-weight: 600;">Livre</span>';
+                } else if (totalAgendamentos === 1) {
+                    cellStatus.innerHTML = '<span style="color: #ffc107; font-weight: 600;">1 vaga</span>';
+                } else {
+                    cellStatus.innerHTML = '<span style="color: #dc3545; font-weight: 600;">Lotado</span>';
+                }
+                row.appendChild(cellStatus);
+                
+                gridContent.appendChild(row);
+            });
+        }
+
+        // Função para atualizar todas as visualizações após mudanças
+        async function atualizarVisualizacoes() {
+            // Atualiza os horários disponíveis no calendário
+            if (diaSelecionado) {
+                atualizarHorarios();
+            }
+            
+            // Verifica qual visualização está ativa na consulta
+            const gridVisible = document.getElementById('agendamentos-grid').style.display !== 'none';
+            const tabelaVisible = document.getElementById('tabela-tradicional').style.display !== 'none';
+            
+            if (gridVisible) {
+                // Se a grade está visível, recarrega os agendamentos da data selecionada
+                const dataInput = document.getElementById('data-consulta');
+                if (dataInput.value) {
+                    await consultarAgendamentosPorData();
+                }
+            } else if (tabelaVisible) {
+                // Se a tabela tradicional está visível, recarrega todos os agendamentos
+                await buscarClientes();
+            } else {
+                // Se nada está visível, carrega a visualização padrão (hoje)
+                await inicializarDataHoje();
+            }
         }
     </script>
 </body>

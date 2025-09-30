@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Criar Conta</title>
+</head>
+<body>
+    <h1>Criar Conta</h1>
+    <form id="registroForm">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" required><br>
+        <label for="email">E-mail:</label>
+        <input type="email" id="email" name="email" required><br>
+        <label for="senha">Senha:</label>
+        <input type="password" id="senha" name="senha" required><br>
+        <button type="submit">Criar Conta</button>
+    </form>
+    <p>Já tem conta? <a href="{{ url_for('login') }}">Acessar conta</a></p>
+    <script>
+        document.getElementById('registroForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/registro', {method: 'POST', body: formData})
+            .then(r => r.json()).then(d => {
+                if (d.mensagem) {
+                    alert(d.mensagem);
+                    window.location.href = '/login';
+                } else {
+                    alert(d.erro);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

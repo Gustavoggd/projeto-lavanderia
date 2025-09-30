@@ -13,7 +13,7 @@ body {
 }
 
 header {
-    background: #0b8e02;
+    background: #ffffff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     text-align: left;
 }
@@ -138,7 +138,7 @@ main {
 #menu {
     display: flex;
     gap: 16px;
-    justify-content: center;
+    justify-content: left;
     margin-bottom: 32px;
 }
 
@@ -215,6 +215,7 @@ input[type="text"], input[type="number"] {
     cursor: pointer;
     font-weight: 600;
     transition: background 0.2s;
+    
 }
 
 .botaomarcar:hover {
@@ -535,88 +536,570 @@ input[type="text"], input[type="number"] {
     background-color: #f5f5f5;
 }
 
-@media (max-width: 600px) {
-    header {
-        text-align: center;
-        padding: 0;
-        
-    }
+/* Estilos para a grade de agendamentos */
+.consulta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
 
+.data-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.data-selector label {
+    font-weight: 500;
+    color: #333;
+}
+
+.data-selector input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.agendamentos-grid {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    
+}
+
+.grid-header {
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr 100px;
+    background: #02820f;
+    color: white;
+    font-weight: 600;
+}
+
+.grid-cell {
+    padding: 12px 15px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+}
+
+.grid-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr 100px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.grid-row:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.grid-row:hover {
+    background: #e8f5e8;
+}
+
+.grid-cell.horario {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #00911d;
+    border-right: 2px solid #00911d;
+}
+
+.grid-cell.agendamento {
+    padding: 6px 8px; /* Reduz o padding da célula */
+    border-right: 1px solid #e0e0e0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden; /* Impede que o conteúdo ultrapasse */
+}
+
+.grid-cell.vazio {
+    color: #999;
+    font-style: italic;
+    justify-content: center;
+}
+
+.agendamento-info {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.agendamento-nome {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.agendamento-apto {
+    font-size: 12px;
+    color: #666;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 10px;
+    width: fit-content;
+}
+
+.botao-excluir-grid {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
+    margin: 2px;
+}
+
+
+
+.grid-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+}
+
+.grid-actions.single {
+    justify-content: center;
+}
+
+.agendamento-slot {
+    position: relative;
+    width: calc(100% - 8px); /* Garante que não ultrapasse */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin: 2px 4px;
+    box-sizing: border-box; /* Inclui padding e border no cálculo da largura */
+}
+
+.agendamento-slot:last-child {
+    margin-bottom: 0;
+}
+
+.agendamento-slot.ocupado {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    margin: 2px 4px; /* Adiciona margem nas laterais */
+    padding: 4px 6px; /* Reduz o padding lateral */
+    border-radius: 4px;
+}
+
+.agendamento-slot .botao-excluir-individual {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.auth-buttons {
+    position: absolute;
+    right: 15px;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 20px;
+    margin-right: 250px;
+   
+}
+
+.btn-auth {
+    padding: 10px 20px; /* Era 6px 14px */
+    border: none;
+    border-radius: 16px;
+    font-size: 0.95rem; /* Era 0.85rem */
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.btn-criar {
+    background: transparent;
+    color: #01711f;
+    border: 1px solid #008d13;
+}
+
+.btn-criar:hover {
+    background: #008016;
+    color: #ffffff;
+}
+
+.btn-acessar {
+    background: #02820f;
+    color: #ffffff;
+    border: 1px solid #02820f;
+    
+}
+
+.btn-acessar:hover {
+    background: transparent;
+    color: #008d13;
+    border: 1px solid #008d13;
+}
+
+/* ========================================
+   RESPONSIVIDADE PARA MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+    
+    /* Header e navegação mobile */
     .imagem-centralizada img {
-        margin: 0px ;
-        display: block;
-        max-width: 180px;
-        width: 80vw;
-        height: auto;
-        justify-content: left;
-    }
-
-    .navbar-principal,
-    nav {
-        flex-direction: column;
-        align-items: center;
-        padding: 8px 0;
-        min-height: unset;
-        margin-top: 8px;
-        margin-bottom: 8px;
-    }
-
-    .navbar-principal ul,
-    nav ul {
-        flex-direction: column;
-        gap: 8px;
+        margin-left: 0;
         width: 100%;
-        align-items: center;
-        padding: 0;
-        margin: 8px;
+        max-width: 300px;
+        display: block;
+        margin: 0 auto;
     }
 
-    .navbar-principal ul li a,
-    nav ul li a {
-        padding: 12px 0;
-        width: 100vw;
-        text-align: center;
-        font-size: 1.1em;
+    .auth-buttons {
+        position: static;
+        margin: 15px auto;
+        margin-right: 0;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
-    #menu {
+    .btn-auth {
+        padding: 12px 24px;
+        font-size: 1rem;
+        min-width: 140px;
+    }
+
+    /* Navegação principal mobile */
+    .navbar-principal {
+        padding: 8px 0;
+        min-height: 50px;
+    }
+
+    .navbar-principal ul {
         flex-direction: column;
-        gap: 2px;
-        padding: 0 8px;
+        gap: 12px;
+        margin: 8px;
+        width: 100%;
     }
 
+    .navbar-principal ul li {
+        width: 100%;
+    }
+
+    .navbar-principal ul li a {
+        padding: 12px 20px;
+        font-size: 1rem;
+        text-align: center;
+        width: 100%;
+        display: block;
+    }
+
+    /* Main container mobile */
     main {
-        padding: 0 4vw;
-        max-width: 100vw;
+        padding: 0 16px;
+        margin: 5px auto 20px;
     }
 
     section {
-        padding: 16px 4vw;
-        margin-bottom: 24px;
+        padding: 20px 16px;
+        margin-bottom: 20px;
     }
 
+    /* Menu de botões mobile */
+    #menu {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    #menu button {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+
+    /* Consulta de agendamentos mobile */
+    .consulta-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .data-selector {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .data-selector input[type="date"] {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    /* Grade de agendamentos mobile */
+    .agendamentos-grid {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .grid-header,
+    .grid-row {
+        grid-template-columns: 80px 1fr 1fr 70px;
+        min-width: 500px; /* Garante scroll horizontal se necessário */
+    }
+
+    .grid-cell {
+        padding: 8px 6px;
+        font-size: 13px;
+        min-height: 50px;
+    }
+
+    .grid-cell.horario {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .agendamento-nome {
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+
+    .agendamento-apto {
+        font-size: 11px;
+        padding: 2px 4px;
+    }
+
+    .agendamento-slot {
+        padding: 6px 4px;
+        margin: 1px 2px;
+    }
+
+    .agendamento-slot .botao-excluir-individual {
+        font-size: 14px;
+        padding: 4px 6px;
+        margin-left: 4px;
+    }
+
+    /* Tabela tradicional mobile */
+    .tabela-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #resultadoConsulta {
+        min-width: 500px;
+        font-size: 13px;
+    }
+
+    #resultadoConsulta th,
+    #resultadoConsulta td {
+        padding: 10px 8px;
+        white-space: nowrap;
+    }
+
+    /* Calendário mobile */
+    .calendario-container {
+        padding: 12px 8px;
+        margin: 16px 0;
+    }
+
+    .calendario-header {
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .calendario-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .calendario-header button {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    .dias-semana {
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+
+    .dia {
+        padding: 12px 0;
+        font-size: 14px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Horários mobile */
+    .horarios-container {
+        margin: 20px 0;
+    }
+
+    .horarios-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .horario-item {
+        padding: 12px 8px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    /* Formulários mobile */
+    .input-busca {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .botao, .botaomarcar {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 1rem;
+        margin-top: 15px;
+    }
+
+    /* Hotel e imagens mobile */
     .hotel-container {
         flex-direction: column;
-        gap: 16px;
-        align-items: center;
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .hotel-info h1 {
+        font-size: 1.6rem;
+        text-align: center;
+    }
+
+    .hotel-info p {
+        font-size: 1rem;
+        text-align: center;
+    }
+
+    .imagens {
+        justify-content: center;
+        gap: 12px;
     }
 
     .imagens img {
-        max-width: 90vw;
-        width: 100%;
-        margin: 0 auto;
+        max-width: 120px;
+    }
+
+    /* Modal mobile */
+    #modal-close {
+        top: 20px;
+        right: 20px;
+        font-size: 2rem;
+    }
+
+    #modal-prev, #modal-next {
+        width: 44px;
+        height: 44px;
+        font-size: 1.4rem;
+    }
+
+    #modal-prev { left: 15px; }
+    #modal-next { right: 15px; }
+
+    #modal-img {
+        max-width: 95vw;
+        max-height: 80vh;
+    }
+
+    #modal-message {
+        font-size: 1.1rem;
+        padding: 12px 20px;
+        margin-top: 15px;
+    }
+
+    /* Legenda mobile */
+    .legenda {
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 15px;
+    }
+
+    .legenda-item {
+        font-size: 14px;
+    }
+
+    .cor-disponivel, .cor-ocupado, .cor-selecionado {
+        width: 16px;
+        height: 16px;
     }
 }
-.botao-excluir {
-    background: #d9534f;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
 
-   
-}
-h2 {
-    color: #000000;
-   margin: 0 0 10px 0;
+/* Extra small devices (phones < 480px) */
+@media (max-width: 480px) {
     
+    .grid-header,
+    .grid-row {
+        grid-template-columns: 60px 1fr 1fr 60px;
+        min-width: 400px;
+    }
+
+    .grid-cell {
+        padding: 6px 4px;
+        font-size: 12px;
+    }
+
+    .agendamento-nome {
+        font-size: 12px;
+    }
+
+    .agendamento-apto {
+        font-size: 10px;
+    }
+
+    .btn-auth {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        min-width: 120px;
+    }
+
+    .horarios-grid {
+        grid-template-columns: 1fr;
+    }
 }
