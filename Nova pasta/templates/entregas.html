@@ -3,84 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entregas Portaria</title>
+    <title>Sistema de Entregas - Hotel Flat Horizonte</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <header>
         <div class="auth-section">
-            {% if user %}
-                <!-- Usuário logado -->
-                <div class="user-info">
-                    <div class="user-avatar">
-                        {{ user.nome[0].upper() }}
-                    </div>
-                    <div class="user-details">
-                        <span class="user-name">{{ user.nome }}</span>
-                        <span class="user-email">{{ user.email }}</span>
-                    </div>
-                    <div class="user-menu">
-                        <button class="btn-menu" onclick="toggleUserMenu()">⚙️</button>
-                        <div class="dropdown-menu" id="userDropdown">
-                            <a href="#" onclick="mostrarPerfil()">Meu Perfil</a>
-                            <a href="/logout">Sair</a>
-                        </div>
+            <div class="user-info">
+                <div class="user-avatar">
+                    {{ user.nome[0].upper() }}
+                </div>
+                <div class="user-details">
+                    <span class="user-name">{{ user.nome }}</span>
+                    <span class="user-email">{{ user.email }}</span>
+                    {% if user.is_admin %}
+                        <span class="user-badge">👑 ADMIN</span>
+                    {% endif %}
+                </div>
+                <div class="user-menu">
+                    <button class="btn-menu" onclick="toggleUserMenu()">⚙️</button>
+                    <div class="dropdown-menu" id="userDropdown">
+                        <a href="#" onclick="mostrarPerfil()">Meu Perfil</a>
+                        <a href="/logout">Sair</a>
                     </div>
                 </div>
-            {% else %}
-                <!-- Usuário não logado -->
-                <div class="auth-buttons">
-                    <button class="btn-auth btn-criar" onclick="window.location.href='/registro'">Criar Conta</button>
-                    <button class="btn-auth btn-acessar" onclick="window.location.href='/login'">Acessar Conta</button>
-                </div>
-            {% endif %}
+            </div>
         </div>
-
+        
         <div class="imagem-centralizada">
             <a href="{{ url_for('index') }}">
                 <img src="{{ url_for('static', filename='logo hotel.jpg') }}" alt="Logo do Hotel" width="200" />
             </a>
         </div>
         
-        <nav class="navbar-principal">
-           <ul>
-              <li><a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Lavanderia</a></li>
-              <li><a href="{{ url_for('entregas') }}" {% if request.endpoint == 'entregas' %}class="active"{% endif %}>Entregas</a></li>
-           </ul>
-        </nav>
+        <div class="header-navigation">
+            <nav class="navbar-principal">
+               <ul>
+                  <li><a href="{{ url_for('index') }}">Lavanderia</a></li>
+                  <li><a href="{{ url_for('entregas') }}" class="active">Entregas</a></li>
+               </ul>
+            </nav>
+        </div>
     </header>
 
     <main>
-        <section>
-            <h2>Entregas Portaria</h2>
-            <form id="form-busca-entregas" style="margin-bottom: 24px;">
-                <label for="cliente">Nome:</label>
-                <input type="text" id="cliente" name="cliente" placeholder="Digite o nome do cliente">
-                <label for="apartamento">Apartamento:</label>
-                <input type="text" id="apartamento" name="apartamento" placeholder="Ex: 203">
-                <button type="button" class="botao" onclick="buscarEntregas()">Buscar</button>
-            </form>
-
-            <div class="tabela-container">
-                <table id="tabela-entregas">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Apartamento</th>
-                            <th>Descrição</th>
-                            <th>Data/Hora</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Linhas preenchidas via JS -->
-                    </tbody>
-                </table>
+        <div class="entregas-container">
+            <div class="page-header">
+                <h1>📦 Entregas Portaria</h1>
             </div>
-        </section>
+
+            <!-- SEÇÃO DE CADASTRO (APENAS ADMIN) -->
+            {% if user.is_admin %}
+            <div class="admin-section">
+                <div class="cadastro-entrega">
+                    <h2>✅ Cadastrar Nova Entrega</h2>
+                    <form id="formCadastroEntrega" class="entrega-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cliente">Nome do Cliente:</label>
+                                <input type="text" id="cliente" name="cliente" required placeholder="Digite o nome do cliente">
+                            </div>
+                            <div class="form-group">
+                                <label for="apartamento">Apartamento:</label>
+                                <input type="text" id="apartamento" name="apartamento" required placeholder="Ex: 203">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="descricao">Descrição da Entrega:</label>
+                            <textarea id="descricao" name="descricao" required placeholder="Ex: Encomenda Amazon, Correspondência, Medicamentos..."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="observacoes">Observações (opcional):</label>
+                            <textarea id="observacoes" name="observacoes" placeholder="Informações adicionais..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="botao btn-cadastrar">📦 Cadastrar Entrega</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- SEÇÃO DE CONSULTA -->
+            <div class="consulta-section">
+                <h2>🔍 Consultar Entregas</h2>
+                <div class="filtros-entregas">
+                    <div class="filtro-group">
+                        <label for="filtroCliente">Cliente:</label>
+                        <input type="text" id="filtroCliente" placeholder="Buscar por nome">
+                    </div>
+                    <div class="filtro-group">
+                        <label for="filtroApartamento">Apartamento:</label>
+                        <input type="text" id="filtroApartamento" placeholder="Ex: 203">
+                    </div>
+                    <div class="filtro-group">
+                        <label for="filtroStatus">Status:</label>
+                        <select id="filtroStatus">
+                            <option value="">Todos</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="entregue">Entregue</option>
+                            <option value="devolvida">Devolvida</option>
+                        </select>
+                    </div>
+                    <div class="filtro-group">
+                        <button class="botao btn-buscar" onclick="consultarEntregas()">🔍 Buscar</button>
+                        <button class="botao btn-limpar" onclick="limparFiltros()">🧹 Limpar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTADOS DAS ENTREGAS -->
+            <div class="resultados-entregas">
+                <div class="entregas-header">
+                    <h3>📋 Lista de Entregas</h3>
+                    <div class="stats-entregas" id="statsEntregas"></div>
+                </div>
+                
+                <div class="entregas-grid" id="entregasGrid">
+                    <!-- Entregas serão carregadas aqui via JavaScript -->
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
-        // Função para alternar o menu do usuário
+        // Variáveis globais
+        let entregasCarregadas = [];
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            consultarEntregas();
+            
+            // Event listener para o formulário de cadastro
+            const form = document.getElementById('formCadastroEntrega');
+            if (form) {
+                form.addEventListener('submit', cadastrarEntrega);
+            }
+        });
+
+        // Função para cadastrar nova entrega
+        async function cadastrarEntrega(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                const response = await fetch('/cadastrar_entrega', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Entrega cadastrada com sucesso!');
+                    event.target.reset();
+                    consultarEntregas();
+                } else {
+                    alert(`❌ ${result.erro}`);
+                }
+            } catch (error) {
+                console.error('Erro ao cadastrar entrega:', error);
+                alert('❌ Erro ao cadastrar entrega');
+            }
+        }
+
+        // Função para consultar entregas
+        async function consultarEntregas() {
+            const cliente = document.getElementById('filtroCliente').value;
+            const apartamento = document.getElementById('filtroApartamento').value;
+            const status = document.getElementById('filtroStatus').value;
+            
+            const params = new URLSearchParams();
+            if (cliente) params.append('cliente', cliente);
+            if (apartamento) params.append('apartamento', apartamento);
+            if (status) params.append('status', status);
+            
+            try {
+                const response = await fetch(`/consultar_entregas?${params}`);
+                const entregas = await response.json();
+                
+                entregasCarregadas = entregas;
+                exibirEntregas(entregas);
+                atualizarEstatisticas(entregas);
+            } catch (error) {
+                console.error('Erro ao consultar entregas:', error);
+                alert('❌ Erro ao carregar entregas');
+            }
+        }
+
+        // Função para exibir entregas na grid
+        function exibirEntregas(entregas) {
+            const grid = document.getElementById('entregasGrid');
+            
+            if (entregas.length === 0) {
+                grid.innerHTML = '<div class="no-entregas">📭 Nenhuma entrega encontrada</div>';
+                return;
+            }
+            
+            grid.innerHTML = entregas.map(entrega => `
+                <div class="entrega-card ${entrega.status}">
+                    <div class="entrega-header">
+                        <div class="entrega-info">
+                            <h4>👤 ${entrega.cliente}</h4>
+                            <span class="apartamento">🏠 Apto ${entrega.apartamento}</span>
+                        </div>
+                        <div class="entrega-status">
+                            <span class="status-badge status-${entrega.status}">
+                                ${getStatusIcon(entrega.status)} ${entrega.status.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="entrega-body">
+                        <div class="descricao">
+                            <strong>📦 Descrição:</strong> ${entrega.descricao}
+                        </div>
+                        
+                        ${entrega.observacoes ? `
+                            <div class="observacoes">
+                                <strong>📝 Observações:</strong> ${entrega.observacoes}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="entrega-dates">
+                            <div class="data-recebimento">
+                                <strong>📅 Recebido:</strong> ${entrega.data_recebimento}
+                            </div>
+                            ${entrega.data_entrega ? `
+                                <div class="data-entrega">
+                                    <strong>✅ Entregue:</strong> ${entrega.data_entrega}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="usuario-cadastro">
+                            <strong>👨‍💼 Cadastrado por:</strong> ${entrega.usuario_cadastro}
+                        </div>
+                    </div>
+                    
+                    {% if user.is_admin %}
+                    <div class="entrega-actions">
+                        <select onchange="alterarStatus(${entrega.id}, this.value)" class="status-select">
+                            <option value="">Alterar status...</option>
+                            <option value="pendente" ${entrega.status === 'pendente' ? 'disabled' : ''}>📋 Pendente</option>
+                            <option value="entregue" ${entrega.status === 'entregue' ? 'disabled' : ''}>✅ Entregue</option>
+                            <option value="devolvida" ${entrega.status === 'devolvida' ? 'disabled' : ''}>↩️ Devolvida</option>
+                        </select>
+                        
+                        <button class="btn-excluir" onclick="excluirEntrega(${entrega.id})" title="Excluir entrega">
+                            🗑️
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            `).join('');
+        }
+
+        // Função para obter ícone do status
+        function getStatusIcon(status) {
+            const icons = {
+                'pendente': '📋',
+                'entregue': '✅',
+                'devolvida': '↩️'
+            };
+            return icons[status] || '📦';
+        }
+
+        // Função para atualizar estatísticas
+        function atualizarEstatisticas(entregas) {
+            const stats = document.getElementById('statsEntregas');
+            const total = entregas.length;
+            const pendentes = entregas.filter(e => e.status === 'pendente').length;
+            const entregues = entregas.filter(e => e.status === 'entregue').length;
+            const devolvidas = entregas.filter(e => e.status === 'devolvida').length;
+            
+            stats.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-number">${total}</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${pendentes}</span>
+                    <span class="stat-label">Pendentes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${entregues}</span>
+                    <span class="stat-label">Entregues</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">${devolvidas}</span>
+                    <span class="stat-label">Devolvidas</span>
+                </div>
+            `;
+        }
+
+        {% if user.is_admin %}
+        // Função para alterar status da entrega
+        async function alterarStatus(entregaId, novoStatus) {
+            if (!novoStatus) return;
+            
+            const formData = new FormData();
+            formData.append('entrega_id', entregaId);
+            formData.append('status', novoStatus);
+            
+            try {
+                const response = await fetch('/atualizar_status_entrega', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Status atualizado com sucesso!');
+                    consultarEntregas();
+                } else {
+                    alert(`❌ ${result.erro}`);
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                alert('❌ Erro ao atualizar status');
+            }
+        }
+
+        // Função para excluir entrega
+        async function excluirEntrega(entregaId) {
+            if (!confirm('🗑️ EXCLUIR ENTREGA\n\nTem certeza que deseja excluir esta entrega?\nEsta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('entrega_id', entregaId);
+            
+            try {
+                const response = await fetch('/excluir_entrega', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Entrega excluída com sucesso!');
+                    consultarEntregas();
+                } else {
+                    alert(`❌ ${result.erro}`);
+                }
+            } catch (error) {
+                console.error('Erro ao excluir entrega:', error);
+                alert('❌ Erro ao excluir entrega');
+            }
+        }
+        {% endif %}
+
+        // Função para limpar filtros
+        function limparFiltros() {
+            document.getElementById('filtroCliente').value = '';
+            document.getElementById('filtroApartamento').value = '';
+            document.getElementById('filtroStatus').value = '';
+            consultarEntregas();
+        }
+
+        // Função para alternar menu do usuário
         function toggleUserMenu() {
             const dropdown = document.getElementById('userDropdown');
             dropdown.classList.toggle('show');
@@ -91,48 +377,10 @@
             const userMenu = document.querySelector('.user-menu');
             const dropdown = document.getElementById('userDropdown');
             
-            if (dropdown && userMenu && !userMenu.contains(event.target)) {
+            if (dropdown && !userMenu.contains(event.target)) {
                 dropdown.classList.remove('show');
             }
         });
-
-        // Função para mostrar perfil
-        function mostrarPerfil() {
-            alert('Funcionalidade do perfil em desenvolvimento!');
-        }
-
-        // Exemplo de busca de entregas (AJAX)
-        async function buscarEntregas() {
-            const cliente = document.getElementById('cliente').value;
-            const apartamento = document.getElementById('apartamento').value;
-            
-            try {
-                const resp = await fetch(`/consultar_entregas?cliente=${encodeURIComponent(cliente)}&apartamento=${encodeURIComponent(apartamento)}`);
-                const entregas = await resp.json();
-                const tbody = document.querySelector('#tabela-entregas tbody');
-                tbody.innerHTML = '';
-                
-                if (entregas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">Nenhuma entrega encontrada</td></tr>';
-                    return;
-                }
-
-                entregas.forEach(e => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td data-label="Cliente">${e.cliente}</td>
-                        <td data-label="Apartamento">${e.apartamento}</td>
-                        <td data-label="Descrição">${e.descricao}</td>
-                        <td data-label="Data/Hora">${e.data_hora}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('Erro ao buscar entregas:', error);
-                const tbody = document.querySelector('#tabela-entregas tbody');
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #dc3545;">Erro ao carregar entregas</td></tr>';
-            }
-        }
     </script>
 </body>
 </html>

@@ -85,7 +85,7 @@
                         <div id="horarios-disponiveis" class="horarios-grid"></div>
                     </div>
 
-                    <button id="confirmar-agendamento" class="botao" onclick="confirmarAgendamento()">Confirmar Agendamento</button>
+                    <button id="confirmar-agendamento" class="botao" onclick="verificarLimiteEAgendar()">Confirmar Agendamento</button>
                 </div>
                 
                 <div class="secao-busca">
@@ -452,6 +452,24 @@
             } catch (error) {
                 console.error('💥 Erro completo:', error);
                 alert(`❌ Erro de conexão: ${error.message}`);
+            }
+        }
+
+        // Função para verificar limite semanal antes de agendar
+        async function verificarLimiteEAgendar() {
+            try {
+                const res = await fetch('/verificar_limite');
+                const limite = await res.json();
+                
+                if (!limite.pode_agendar && !limite.is_admin) {
+                    alert(`🚫 LIMITE SEMANAL ATINGIDO\n\nVocê já agendou ${limite.agendamentos_semana}/1 horário(s) esta semana.\n\nUsuários podem agendar apenas 1 horário por semana.\nAdministradores têm acesso ilimitado.`);
+                    return false;
+                }
+                
+                return await confirmarAgendamento();
+            } catch (error) {
+                console.error('Erro ao verificar limite:', error);
+                return await confirmarAgendamento();
             }
         }
 

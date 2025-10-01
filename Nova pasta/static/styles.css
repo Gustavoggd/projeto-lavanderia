@@ -1822,3 +1822,435 @@ input[type="text"], input[type="number"] {
         min-width: 120px;
     }
 }
+
+/* ========================================
+   ESTILOS PARA SISTEMA DE ENTREGAS
+======================================== */
+
+.entregas-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    color: #070707;
+    margin-bottom: 10px;
+}
+
+.page-header p {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+/* Seção de cadastro (Admin) - Estilo branco com detalhes verdes */
+.admin-section {
+    background: white;
+    color: #333;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 2px solid #e9ecef;
+    border-top: 4px solid #00911d;
+}
+
+.cadastro-entrega h2 {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #00911d;
+    font-weight: 600;
+}
+
+.entrega-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #f8f9fa;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #00911d;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0, 145, 29, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.btn-cadastrar {
+    background: #006414;
+    color: white;
+    border: 2px solid #00911d;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.btn-cadastrar:hover {
+    background: #02820f;
+    border-color: #02820f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 145, 29, 0.3);
+}
+
+/* Seção de consulta */
+.consulta-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.filtros-entregas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filtro-group label {
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.filtro-group input,
+.filtro-group select {
+    padding: 10px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.filtro-group input:focus,
+.filtro-group select:focus {
+    outline: none;
+    border-color: #00911d;
+}
+
+.btn-buscar,
+.btn-limpar {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0 5px;
+}
+
+.btn-buscar {
+    background: #02820f;
+    color: white;
+}
+
+.btn-buscar:hover {
+    background: #02820f;
+}
+
+.btn-limpar {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-limpar:hover {
+    background: #545b62;
+}
+
+/* Resultados das entregas */
+.resultados-entregas {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.entregas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.stats-entregas {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #00911d;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #00911d;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Grid de entregas */
+.entregas-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.entrega-card {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+    background: white;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.entrega-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.entrega-card.pendente {
+    border-left: 6px solid #ffc107;
+}
+
+.entrega-card.entregue {
+    border-left: 6px solid #28a745;
+}
+
+.entrega-card.devolvida {
+    border-left: 6px solid #dc3545;
+}
+
+.entrega-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.entrega-info h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.apartamento {
+    color: #666;
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pendente {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-entregue {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-devolvida {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.entrega-body {
+    margin-bottom: 15px;
+}
+
+.entrega-body > div {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.descricao,
+.observacoes {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 4px solid #00911d;
+}
+
+.entrega-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.usuario-cadastro {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Ações da entrega (Admin) */
+.entrega-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.status-select {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+.btn-excluir {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-excluir:hover {
+    background: #c82333;
+}
+
+/* Mensagem quando não há entregas */
+.no-entregas {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.2rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}
+
+/* Badge de usuário admin */
+.user-badge {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 10px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .entregas-container {
+        padding: 15px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .filtros-entregas {
+        grid-template-columns: 1fr;
+    }
+    
+    .entregas-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .stats-entregas {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .entrega-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .entrega-dates {
+        grid-template-columns: 1fr;
+    }
+    
+    .entrega-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .status-select {
+        width: 100%;
+    }
+}
