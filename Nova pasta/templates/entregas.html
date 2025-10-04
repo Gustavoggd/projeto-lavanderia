@@ -75,8 +75,8 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="observacoes">Observações (opcional):</label>
-                            <textarea id="observacoes" name="observacoes" placeholder="Informações adicionais..."></textarea>
+                            <label for="recebidoPor">Recebido por:</label>
+                            <input type="text" id="recebidoPor" name="recebido_por" required placeholder="Digite o nome de quem recebeu">
                         </div>
                         
                         <button type="submit" class="botao btn-cadastrar">📦 Cadastrar Entrega</button>
@@ -221,9 +221,9 @@
                             <strong>📦 Descrição:</strong> ${entrega.descricao}
                         </div>
                         
-                        ${entrega.observacoes ? `
-                            <div class="observacoes">
-                                <strong>📝 Observações:</strong> ${entrega.observacoes}
+                        ${entrega.recebido_por ? `
+                            <div class="recebido-por">
+                                <strong>👤 Recebido por:</strong> ${entrega.recebido_por}
                             </div>
                         ` : ''}
                         

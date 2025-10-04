@@ -169,6 +169,11 @@
     </main>
 
    <script>
+        // Configuração segura das variáveis do usuário
+        const userData = {% if user %}{{ user|tojson }}{% else %}null{% endif %};
+        
+        console.log('Dados do usuário:', userData);
+        
         // Troca de seções
         function mostrar(secao) {
             document.querySelectorAll("#secoes-funcionais section").forEach(s => s.style.display = "none");
@@ -193,6 +198,18 @@
             
             // Define a data de hoje no campo de consulta e carrega agendamentos
             inicializarDataHoje();
+            
+            // Aplica limite de datas nos agendamentos
+            aplicarLimiteDatas();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Código existente...
+            
+            // Aplica limite de datas nos agendamentos
+            aplicarLimiteDatas();
+            
+            // Resto do código...
         });
 
         // Função para definir a data de hoje e carregar agendamentos automaticamente
@@ -388,22 +405,42 @@
         async function confirmarAgendamento() {
             console.log('=== INICIANDO AGENDAMENTO ===');
             
-            if (!diaSelecionado) {
-                alert("Selecione um dia!");
-                return;
+            // Verificar se usuário está logado
+            if (!userData) {
+                alert('🔐 LOGIN NECESSÁRIO\n\nPara agendar horários, você precisa fazer login ou criar uma conta.\n\nClique em "Acessar Conta" ou "Criar Conta" no topo da página.');
+                return false;
             }
-            console.log('✅ Dia selecionado:', diaSelecionado);
+            
+            if (!diaSelecionado) {
+                alert("📅 Selecione um dia no calendário!");
+                return false;
+            }
+            
+            // NOVA VALIDAÇÃO: Verifica limite de 7 dias
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            const dataLimite = new Date(hoje);
+            dataLimite.setDate(hoje.getDate() + 7);
+            
+            const diaSelecionadoCopia = new Date(diaSelecionado);
+            diaSelecionadoCopia.setHours(0, 0, 0, 0);
+            
+            if (diaSelecionadoCopia < hoje) {
+                alert("⚠️ DATA INVÁLIDA\n\nNão é possível agendar para datas passadas.\n\nSelecione uma data a partir de hoje.");
+                return false;
+            }
+            
+            if (diaSelecionadoCopia > dataLimite) {
+                const dataLimiteFormatada = dataLimite.toLocaleDateString('pt-BR');
+                alert(`⚠️ DATA MUITO DISTANTE\n\nAgendamentos são permitidos apenas até ${dataLimiteFormatada} (máximo 7 dias à frente).\n\nEscolha uma data mais próxima.`);
+                return false;
+            }
             
             const horarioSel = document.querySelector(".horario-item.selecionada");
-            console.log('Horários com classe selecionada:', document.querySelectorAll(".horario-item.selecionada"));
-            console.log('Horário encontrado:', horarioSel);
-            
             if (!horarioSel) {
-                alert("Selecione um horário!");
-                console.log('❌ Nenhum horário selecionado');
-                return;
+                alert("⏰ Selecione um horário disponível!");
+                return false;
             }
-            console.log('✅ Horário selecionado:', horarioSel.textContent);
             
             const nome = document.getElementById("nome-agendamento").value.trim();
             const apto = document.getElementById("apto-agendamento").value.trim();
@@ -457,8 +494,27 @@
 
         // Função para verificar limite semanal antes de agendar
         async function verificarLimiteEAgendar() {
+            console.log('Verificando limite, userData:', userData);
+            
+            // Primeiro verifica se está logado localmente
+            if (!userData) {
+                alert('🔐 ACESSO RESTRITO\n\nPara agendar horários da lavanderia, você precisa fazer login ou criar uma conta.\n\n👆 Clique em "Acessar Conta" ou "Criar Conta" no topo da página.');
+                return false;
+            }
+            
             try {
                 const res = await fetch('/verificar_limite');
+                
+                // Se não está logado (401), mostra mensagem de login
+                if (res.status === 401) {
+                    alert('🔐 ACESSO RESTRITO\n\nPara agendar horários da lavanderia, você precisa fazer login ou criar uma conta.\n\n👆 Clique em "Acessar Conta" ou "Criar Conta" no topo da página.');
+                    return false;
+                }
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                
                 const limite = await res.json();
                 
                 if (!limite.pode_agendar && !limite.is_admin) {
@@ -469,7 +525,8 @@
                 return await confirmarAgendamento();
             } catch (error) {
                 console.error('Erro ao verificar limite:', error);
-                return await confirmarAgendamento();
+                alert('🔐 ACESSO RESTRITO\n\nPara agendar horários da lavanderia, você precisa fazer login ou criar uma conta.\n\n👆 Clique em "Acessar Conta" ou "Criar Conta" no topo da página.');
+                return false;
             }
         }
 
@@ -653,6 +710,44 @@
             } else {
                 // Se nada está visível, carrega a visualização padrão (hoje)
                 await inicializarDataHoje();
+            }
+        }
+
+        // Função para verificar e aplicar limite de datas
+        async function aplicarLimiteDatas() {
+            try {
+                const response = await fetch('/verificar_data_limite');
+                const limite = await response.json();
+                
+                // Atualiza o input de data com os limites
+                const inputData = document.querySelector('input[type="date"]');
+                if (inputData) {
+                    inputData.min = limite.data_minima;
+                    inputData.max = limite.data_maxima;
+                    
+                    // Adiciona evento para validar quando o usuário seleciona uma data
+                    inputData.addEventListener('change', function() {
+                        const dataSelecionada = new Date(this.value + 'T00:00:00');
+                        const dataMinima = new Date(limite.data_minima + 'T00:00:00');
+                        const dataMaxima = new Date(limite.data_maxima + 'T00:00:00');
+                        
+                        if (dataSelecionada < dataMinima) {
+                            alert('⚠️ DATA MUITO ANTIGA\n\nNão é possível agendar para datas passadas.');
+                            this.value = '';
+                            return;
+                        }
+                        
+                        if (dataSelecionada > dataMaxima) {
+                            alert(`⚠️ DATA MUITO DISTANTE\n\nAgendamentos são permitidos apenas até ${limite.data_limite_formatada} (máximo 7 dias à frente).\n\nEscolha uma data mais próxima.`);
+                            this.value = '';
+                            return;
+                        }
+                    });
+                }
+                
+                console.log(`📅 Limite de agendamento: até ${limite.data_limite_formatada}`);
+            } catch (error) {
+                console.error('Erro ao aplicar limite de datas:', error);
             }
         }
 

@@ -37,7 +37,7 @@ class Usuario(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     senha_hash = db.Column(db.String(255), nullable=False)
     perfil = db.Column(db.String(20), default='usuario', nullable=False)  # 'admin' ou 'usuario'
-    data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
+    data_cadastro = db.Column(db.DateTime, default=lambda: datetime.now())  # Horário local
     ativo = db.Column(db.Boolean, default=True)
     
     def set_password(self, senha):
@@ -50,22 +50,46 @@ class Usuario(db.Model, UserMixin):
         return self.perfil == 'admin'
     
     def agendamentos_esta_semana(self):
-        """Conta quantos agendamentos o usuário fez nesta semana"""
+        """Conta quantos agendamentos o usuário fez nesta semana (segunda a domingo)"""
         hoje = datetime.now().date()
-        inicio_semana = hoje - timedelta(days=hoje.weekday())
-        fim_semana = inicio_semana + timedelta(days=6)
+        
+        # Calcula a segunda-feira desta semana
+        inicio_semana = hoje - timedelta(days=hoje.weekday())  # Segunda desta semana
+        fim_semana = inicio_semana + timedelta(days=6)  # Domingo desta semana
         
         return Agendamento.query.filter(
             Agendamento.usuario_id == self.id,
             Agendamento.data >= inicio_semana.strftime('%Y-%m-%d'),
             Agendamento.data <= fim_semana.strftime('%Y-%m-%d')
         ).count()
-    
-    def pode_agendar(self):
-        """Verifica se o usuário pode fazer mais agendamentos esta semana"""
+
+    def pode_agendar_na_data(self, data_agendamento):
+        """Verifica se o usuário pode agendar na data específica"""
         if self.is_admin():
             return True
-        return self.agendamentos_esta_semana() < 1
+        
+        # Converte string para date se necessário
+        if isinstance(data_agendamento, str):
+            data_agendamento = datetime.strptime(data_agendamento, '%Y-%m-%d').date()
+        
+        # ÚNICA VALIDAÇÃO: Verifica se já tem agendamento na mesma semana
+        inicio_semana_agendamento = data_agendamento - timedelta(days=data_agendamento.weekday())
+        fim_semana_agendamento = inicio_semana_agendamento + timedelta(days=6)
+        
+        agendamentos_na_semana = Agendamento.query.filter(
+            Agendamento.usuario_id == self.id,
+            Agendamento.data >= inicio_semana_agendamento.strftime('%Y-%m-%d'),
+            Agendamento.data <= fim_semana_agendamento.strftime('%Y-%m-%d')
+        ).count()
+        
+        # Retorna True se não tem agendamento nesta semana específica
+        return agendamentos_na_semana < 1
+
+    def pode_agendar(self):
+        """Verifica se o usuário pode fazer agendamentos (método geral)"""
+        if self.is_admin():
+            return True
+        return True  # Permitimos verificar por data específica
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -84,7 +108,7 @@ class Agendamento(db.Model):
     apto = db.Column(db.String(20), nullable=False)
     data = db.Column(db.String(20), nullable=False)
     horario = db.Column(db.String(10), nullable=False)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_em = db.Column(db.DateTime, default=lambda: datetime.now())  # Horário local
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     
     # Relacionamento com usuário
@@ -96,10 +120,10 @@ class Entrega(db.Model):
     cliente = db.Column(db.String(120), nullable=False)
     apartamento = db.Column(db.String(20), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
-    data_recebimento = db.Column(db.DateTime, default=datetime.utcnow)
+    data_recebimento = db.Column(db.DateTime, default=lambda: datetime.now())  # Horário local
     status = db.Column(db.String(20), default='pendente')  # 'pendente', 'entregue', 'devolvida'
     observacoes = db.Column(db.Text)
-    usuario_cadastro_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)  # Mudado para nullable=True
+    usuario_cadastro_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
     data_entrega = db.Column(db.DateTime)
     
     # Relacionamentos
@@ -113,7 +137,7 @@ class Entrega(db.Model):
             'descricao': self.descricao,
             'data_recebimento': self.data_recebimento.strftime('%d/%m/%Y %H:%M') if self.data_recebimento else '',
             'status': self.status,
-            'observacoes': self.observacoes or '',
+            'recebido_por': self.observacoes or '',  # Mudança: agora retorna como 'recebido_por'
             'data_entrega': self.data_entrega.strftime('%d/%m/%Y %H:%M') if self.data_entrega else '',
             'usuario_cadastro': self.usuario_cadastro.nome if self.usuario_cadastro else 'Sistema'
         }
@@ -126,20 +150,6 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin():
             return jsonify({"erro": "Acesso negado. Apenas administradores."}), 403
-        return f(*args, **kwargs)
-    return decorated_function
-
-def check_weekly_limit(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({"erro": "Login necessário"}), 401
-        
-        if not current_user.pode_agendar():
-            return jsonify({
-                "erro": "Limite semanal atingido. Usuários podem agendar apenas 1 horário por semana."
-            }), 429
-        
         return f(*args, **kwargs)
     return decorated_function
 
@@ -168,7 +178,7 @@ def registro():
             db.session.add(usuario)
             db.session.commit()
             
-            return jsonify({"mensagem": "Usuário cadastrado com sucesso!"}), 200
+            return jsonify({"mensagem": "Usuário cadastrado com sucesso!"}), 200  # ← CORREÇÃO AQUI
         except Exception as e:
             db.session.rollback()
             return jsonify({"erro": f"Erro ao cadastrar usuário: {str(e)}"}), 500
@@ -192,7 +202,7 @@ def login():
                 return jsonify({"erro": "E-mail ou senha inválidos"}), 401
             
             login_user(usuario)
-            return jsonify({"mensagem": "Login realizado com sucesso!"}), 200
+            return jsonify({"mensagem": "Login realizado com sucesso!"}), 200  # ← CORREÇÃO AQUI
         except Exception as e:
             return jsonify({"erro": f"Erro no login: {str(e)}"}), 500
 
@@ -237,7 +247,7 @@ def cadastrar():
         db.session.add(novo_cliente)
         db.session.commit()
 
-        return jsonify({"mensagem": "Cliente cadastrado com sucesso!"}), 200
+        return jsonify({"mensagem": "Cliente cadastrado com sucesso!"}), 200  # ← CORREÇÃO AQUI
     except Exception as e:
         db.session.rollback()
         return jsonify({"erro": "Erro ao processar a requisição: " + str(e)}), 500
@@ -282,9 +292,12 @@ def desmarcar():
 
 @app.route('/agendar', methods=['POST'])
 @login_required
-@check_weekly_limit
 def agendar():
     try:
+        # Verifica se está logado
+        if not current_user.is_authenticated:
+            return jsonify({"erro": "Para agendar horários, você precisa fazer login ou criar uma conta primeiro."}), 401
+        
         dados = request.form
         nome = dados.get('nome')
         apto = dados.get('apto')
@@ -293,6 +306,31 @@ def agendar():
 
         if not nome or not apto or not data or not horario:
             return jsonify({"erro": "Dados incompletos"}), 400
+        
+        # VALIDAÇÃO: Limite de 7 dias
+        try:
+            data_agendamento = datetime.strptime(data, '%Y-%m-%d').date()
+            data_hoje = datetime.now().date()
+            data_limite = data_hoje + timedelta(days=7)
+            
+            if data_agendamento < data_hoje:
+                return jsonify({"erro": "Não é possível agendar para datas passadas"}), 400
+            
+            if data_agendamento > data_limite:
+                return jsonify({"erro": f"Agendamentos são permitidos apenas até {data_limite.strftime('%d/%m/%Y')} (máximo 7 dias à frente)"}), 400
+                
+        except ValueError:
+            return jsonify({"erro": "Data inválida"}), 400
+        
+        # NOVA VALIDAÇÃO: Apenas 1 agendamento por semana
+        if not current_user.pode_agendar_na_data(data):
+            data_obj = datetime.strptime(data, '%Y-%m-%d').date()
+            inicio_semana = data_obj - timedelta(days=data_obj.weekday())
+            fim_semana = inicio_semana + timedelta(days=6)
+            
+            return jsonify({
+                "erro": f"Você já tem um agendamento na semana de {inicio_semana.strftime('%d/%m')} a {fim_semana.strftime('%d/%m/%Y')} (segunda a domingo). Escolha uma data de outra semana."
+            }), 429
         
         cliente = Cliente.query.filter(db.func.lower(Cliente.nome) == nome.lower(), Cliente.apto == apto).first()
         if not cliente:
@@ -309,17 +347,12 @@ def agendar():
             apto=apto,
             data=data,
             horario=horario,
-            usuario_id=current_user.id  # Associa ao usuário logado
+            usuario_id=current_user.id
         )
         db.session.add(novo_agendamento)
         db.session.commit()
 
-        agendamentos_semana = current_user.agendamentos_esta_semana()
-        limite_msg = ""
-        if not current_user.is_admin() and agendamentos_semana >= 1:
-            limite_msg = f" (Limite semanal: {agendamentos_semana}/1)"
-
-        return jsonify({"mensagem": f"Agendamento realizado{limite_msg}"}), 200
+        return jsonify({"mensagem": "Agendamento realizado com sucesso!"}), 200  # ← CORREÇÃO AQUI
     except Exception as e:
         db.session.rollback()
         return jsonify({"erro": "Erro ao agendar: " + str(e)}), 500
@@ -395,6 +428,40 @@ def verificar_limite():
         'perfil': current_user.perfil
     })
 
+@app.route('/verificar_data_limite')
+def verificar_data_limite():
+    """Retorna as datas permitidas para agendamento"""
+    data_hoje = datetime.now().date()
+    data_limite = data_hoje + timedelta(days=7)
+    
+    return jsonify({
+        'data_minima': data_hoje.strftime('%Y-%m-%d'),
+        'data_maxima': data_limite.strftime('%Y-%m-%d'),
+        'data_limite_formatada': data_limite.strftime('%d/%m/%Y'),
+        'dias_limite': 7
+    })
+
+@app.route('/verificar_disponibilidade_completa')
+@login_required
+def verificar_disponibilidade_completa():
+    hoje = datetime.now().date()
+    
+    # Informações da semana atual
+    inicio_semana_atual = hoje - timedelta(days=hoje.weekday())
+    fim_semana_atual = inicio_semana_atual + timedelta(days=6)
+    agendamentos_semana_atual = current_user.agendamentos_esta_semana()
+    
+    return jsonify({
+        'pode_agendar_geral': current_user.pode_agendar(),
+        'is_admin': current_user.is_admin(),
+        'semana_atual': {
+            'inicio': inicio_semana_atual.strftime('%d/%m/%Y'),
+            'fim': fim_semana_atual.strftime('%d/%m/%Y'),
+            'agendamentos': agendamentos_semana_atual
+        },
+        'data_hoje': hoje.strftime('%Y-%m-%d')
+    })
+
 @app.route('/entregas')
 @login_required
 def entregas():
@@ -431,7 +498,6 @@ def consultar_entregas():
         return jsonify([entrega.to_dict() for entrega in entregas])
     except Exception as e:
         print(f"Erro ao consultar entregas: {e}")
-        # Retorna uma lista vazia em caso de erro
         return jsonify([])
 
 @app.route('/cadastrar_entrega', methods=['POST'])
@@ -443,16 +509,16 @@ def cadastrar_entrega():
         cliente = dados.get('cliente')
         apartamento = dados.get('apartamento')
         descricao = dados.get('descricao')
-        observacoes = dados.get('observacoes', '')
+        recebido_por = dados.get('recebido_por', '')  # Mudança aqui
         
-        if not cliente or not apartamento or not descricao:
-            return jsonify({"erro": "Cliente, apartamento e descrição são obrigatórios"}), 400
+        if not cliente or not apartamento or not descricao or not recebido_por:  # Tornou obrigatório
+            return jsonify({"erro": "Cliente, apartamento, descrição e 'Recebido por' são obrigatórios"}), 400
         
         nova_entrega = Entrega(
             cliente=cliente,
             apartamento=apartamento,
             descricao=descricao,
-            observacoes=observacoes,
+            observacoes=recebido_por,  # Usando o campo observacoes para armazenar "recebido_por"
             usuario_cadastro_id=current_user.id
         )
         
@@ -485,7 +551,7 @@ def atualizar_status_entrega():
         
         entrega.status = novo_status
         if novo_status == 'entregue':
-            entrega.data_entrega = datetime.utcnow()
+            entrega.data_entrega = datetime.now()  # Horário local atual
         
         db.session.commit()
         
@@ -511,7 +577,7 @@ def excluir_entrega():
         db.session.delete(entrega)
         db.session.commit()
         
-        return jsonify({"mensagem": "Entrega excluída com sucesso!"}), 200
+        return jsonify({"mensagem": "Entrega excluída com sucesso!"}), 200  # ← CORREÇÃO AQUI
     except Exception as e:
         db.session.rollback()
         return jsonify({"erro": f"Erro ao excluir entrega: {str(e)}"}), 500
@@ -570,40 +636,69 @@ def meu_perfil():
                          agendamentos=agendamentos_usuario)
 
 # ==========================
+# TRATAMENTO DE ERROS
+# ==========================
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({"erro": "Requisição inválida"}), 400
+
+@app.errorhandler(401) 
+def unauthorized(error):
+    return jsonify({"erro": "Para agendar horários, você precisa fazer login ou criar uma conta primeiro."}), 401
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"erro": "Erro interno do servidor"}), 500
+
+# ==========================
 # FUNÇÕES UTILITÁRIAS
 # ==========================
 def criar_admin_inicial():
     """Cria o primeiro usuário admin se não existir"""
     try:
-        # Tenta encontrar um admin pelo email primeiro
-        admin_existente = Usuario.query.filter_by(email='admin@hotel.com').first()
-        if not admin_existente:
+        # CONFIGURAÇÕES DO ADMIN ATUALIZADAS
+        ADMIN_EMAIL = 'flathorizonte@gmail.com'  # Email correto
+        ADMIN_SENHA = 'horizonte222'             # Senha correta
+        ADMIN_NOME = 'Administrador Flat Horizonte'
+        
+        # Busca admin existente (email antigo OU novo)
+        admin_existente = Usuario.query.filter_by(email='admin@hotel.com').first() or \
+                         Usuario.query.filter_by(email=ADMIN_EMAIL).first()
+        
+        if admin_existente:
+            # ATUALIZA o admin existente
+            admin_existente.nome = ADMIN_NOME
+            admin_existente.email = ADMIN_EMAIL
+            admin_existente.set_password(ADMIN_SENHA)
+            admin_existente.perfil = 'admin'
+            db.session.commit()
+            print(f"✅ Admin ATUALIZADO - Email: {ADMIN_EMAIL}, Senha: {ADMIN_SENHA}")
+        else:
+            # Cria novo admin
             admin = Usuario(
-                nome='Administrador',
-                email='admin@hotel.com',
+                nome=ADMIN_NOME,
+                email=ADMIN_EMAIL,
                 perfil='admin'
             )
-            admin.set_password('admin123')
+            admin.set_password(ADMIN_SENHA)
             db.session.add(admin)
             db.session.commit()
-            print("✅ Usuário admin criado - Email: admin@hotel.com, Senha: admin123")
-        else:
-            print("✅ Usuário admin já existe")
+            print(f"✅ Admin CRIADO - Email: {ADMIN_EMAIL}, Senha: {ADMIN_SENHA}")
     except Exception as e:
         print(f"❌ Erro ao verificar/criar admin: {e}")
-        # Cria as tabelas novamente se houver erro
+        # Force recriação se houver erro
         try:
             db.drop_all()
             db.create_all()
             admin = Usuario(
-                nome='Administrador',
-                email='admin@hotel.com',
+                nome=ADMIN_NOME,
+                email=ADMIN_EMAIL,
                 perfil='admin'
             )
-            admin.set_password('admin123')
+            admin.set_password(ADMIN_SENHA)
             db.session.add(admin)
             db.session.commit()
-            print("✅ Banco recriado e admin criado!")
+            print(f"✅ Banco recriado - Admin: {ADMIN_EMAIL}, Senha: {ADMIN_SENHA}")
         except Exception as e2:
             print(f"❌ Erro crítico: {e2}")
 
@@ -615,4 +710,7 @@ if __name__ == '__main__':
         db.create_all()
         criar_admin_inicial()
     print("🚀 Servidor iniciando...")
+    print("📧 Admin: flathorizonte@gmail.com")
+    print("🔑 Senha: horizonte222")
+    print("🔗 Acesse: http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=True)
